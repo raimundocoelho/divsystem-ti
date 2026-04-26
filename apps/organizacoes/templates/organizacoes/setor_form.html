@@ -1,0 +1,25 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if form.instance.pk %}Editar{% else %}Novo{% endif %} setor{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Editar{% else %}Novo{% endif %} setor{% endblock %}
+
+{% block content %}
+<form method="post" class="card max-w-2xl">
+  {% csrf_token %}
+  <div class="card-body space-y-4">
+    {% if form.non_field_errors %}<div class="flash flash-error">{{ form.non_field_errors.0 }}</div>{% endif %}
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div><label class="label">Nome</label>{{ form.nome }}{% if form.nome.errors %}<p class="form-error">{{ form.nome.errors.0 }}</p>{% endif %}</div>
+      <div><label class="label">Secretaria</label>{{ form.secretaria }}</div>
+      <div class="sm:col-span-2"><label class="label">Descrição</label>{{ form.descricao }}</div>
+      <div><label class="label">Responsável</label>{{ form.responsavel }}</div>
+      <div><label class="label">Localização</label>{{ form.localizacao }}</div>
+      <label class="flex items-center gap-2 text-sm">{{ form.ativo }} Ativo</label>
+    </div>
+  </div>
+  <div class="card-header bg-zinc-50/60 justify-end">
+    <a href="{% url 'organizacoes:setor_list' %}" class="btn-secondary">Cancelar</a>
+    <button class="btn-primary">{% icon "lucide:save" "1em" %}Salvar</button>
+  </div>
+</form>
+{% endblock %}

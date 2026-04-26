@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load divsystem %}
+
+{% block body %}
+<div class="min-h-full flex flex-col items-center justify-center px-4 py-12 bg-gradient-to-br from-zinc-900 via-zinc-800 to-blue-900">
+  <div class="w-full max-w-sm">
+    <div class="flex items-center justify-center gap-3 mb-8">
+      <span class="grid place-items-center h-11 w-11 rounded-lg bg-blue-500 text-white shadow-lg shadow-blue-900/30">
+        {% icon "lucide:cpu" "1.5em" %}
+      </span>
+      <div class="text-white">
+        <p class="font-semibold tracking-tight text-lg">{{ APP_NAME }}</p>
+        <p class="text-xs uppercase tracking-wider text-blue-300/80">{{ APP_TAGLINE }}</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-xl shadow-black/20 p-7">
+      {% if messages %}
+        <div class="mb-4 space-y-2">
+          {% for message in messages %}<div class="flash flash-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+        </div>
+      {% endif %}
+      {% block auth_content %}{% endblock %}
+    </div>
+
+    <p class="mt-6 text-center text-xs text-blue-200/70">
+      © {% now "Y" %} SABIO SYSTEM · INPI BR512026001444-1
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Painel{% endblock %}
+{% block page_title %}Painel{% endblock %}
+
+{% block content %}
+<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <a href="{% url 'organizacoes:secretaria_list' %}" class="card hover:shadow-md transition">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-zinc-500">Secretarias</p>
+        {% icon "lucide:building-2" "1.4em" "text-blue-600" %}
+      </div>
+      <p class="mt-2 text-3xl font-semibold text-zinc-900">{{ metricas.secretarias }}</p>
+    </div>
+  </a>
+  <a href="{% url 'organizacoes:setor_list' %}" class="card hover:shadow-md transition">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-zinc-500">Setores</p>
+        {% icon "lucide:layers" "1.4em" "text-emerald-600" %}
+      </div>
+      <p class="mt-2 text-3xl font-semibold text-zinc-900">{{ metricas.setores }}</p>
+    </div>
+  </a>
+  <a href="{% url 'agentes:list' %}" class="card hover:shadow-md transition">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-zinc-500">Agentes</p>
+        {% icon "lucide:shield" "1.4em" "text-amber-600" %}
+      </div>
+      <p class="mt-2 text-3xl font-semibold text-zinc-900">—</p>
+      <p class="text-xs text-zinc-500 mt-1">Acessar →</p>
+    </div>
+  </a>
+  <a href="{% url 'configuracoes:list' %}" class="card hover:shadow-md transition">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-zinc-500">Configurações</p>
+        {% icon "lucide:settings" "1.4em" "text-zinc-700" %}
+      </div>
+      <p class="mt-2 text-3xl font-semibold text-zinc-900">—</p>
+    </div>
+  </a>
+</section>
+
+{% if not current_tenant %}
+<div class="mt-8 flash flash-warning">
+  {% icon "lucide:alert-triangle" "1.1em" %}
+  <span>Você está em <strong>modo global</strong>. Selecione uma prefeitura para começar.</span>
+</div>
+{% endif %}
+{% endblock %}

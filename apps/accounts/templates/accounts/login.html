@@ -1,0 +1,36 @@
+{% extends "layouts/auth.html" %}
+{% load divsystem %}
+{% block title %}Entrar{% endblock %}
+
+{% block auth_content %}
+<h1 class="text-xl font-semibold text-zinc-900 mb-1">Entrar no painel</h1>
+<p class="text-sm text-zinc-500 mb-6">Use seu e-mail institucional. A prefeitura é identificada automaticamente.</p>
+
+<form method="post" class="space-y-4">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="flash flash-error">{{ form.non_field_errors.0 }}</div>
+  {% endif %}
+
+  <div>
+    <label class="label" for="{{ form.email.id_for_label }}">E-mail</label>
+    {{ form.email }}
+    {% if form.email.errors %}<p class="form-error">{{ form.email.errors.0 }}</p>{% endif %}
+  </div>
+
+  <div>
+    <label class="label" for="{{ form.password.id_for_label }}">Senha</label>
+    {{ form.password }}
+    {% if form.password.errors %}<p class="form-error">{{ form.password.errors.0 }}</p>{% endif %}
+  </div>
+
+  <label class="flex items-center gap-2 text-sm text-zinc-600 select-none">
+    {{ form.remember }} Manter conectado
+  </label>
+
+  <button class="btn-primary w-full">
+    {% icon "lucide:log-in" "1em" %}
+    Entrar
+  </button>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Excluir setor{% endblock %}
+{% block page_title %}Excluir setor{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-lg">
+  {% csrf_token %}
+  <div class="card-body"><p>Excluir o setor <strong>{{ object.nome }}</strong>?</p></div>
+  <div class="card-header bg-zinc-50/60 justify-end">
+    <a href="{% url 'organizacoes:setor_list' %}" class="btn-secondary">Cancelar</a>
+    <button class="btn-danger">{% icon "lucide:trash-2" "1em" %}Excluir</button>
+  </div>
+</form>
+{% endblock %}

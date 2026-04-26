@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Selecionar prefeitura{% endblock %}
+{% block page_title %}Selecionar prefeitura{% endblock %}
+
+{% block content %}
+<form method="post" class="card max-w-xl">
+  {% csrf_token %}
+  <div class="card-body space-y-4">
+    <p class="text-sm text-zinc-600">Como administrador global você pode operar como qualquer prefeitura. Selecione abaixo:</p>
+    <select class="input" name="tenant_id">
+      <option value="">— Modo global —</option>
+      {% for t in tenants %}
+      <option value="{{ t.id }}" {% if request.session.admin_tenant_id == t.id %}selected{% endif %}>{{ t.name }} ({{ t.code }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="card-header bg-zinc-50/60 justify-end">
+    <button class="btn-primary">{% icon "lucide:check" "1em" %}Aplicar</button>
+  </div>
+</form>
+{% endblock %}

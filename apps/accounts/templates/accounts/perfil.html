@@ -1,0 +1,36 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Meu perfil{% endblock %}
+{% block page_title %}Meu perfil{% endblock %}
+
+{% block content %}
+<div class="grid lg:grid-cols-2 gap-6 max-w-4xl">
+  <section class="card">
+    <header class="card-header">
+      <h2 class="font-semibold text-zinc-900 flex items-center gap-2">{% icon "lucide:user" "1.1em" %} Dados pessoais</h2>
+    </header>
+    <form method="post" class="card-body space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="form" value="profile">
+      <div><label class="label">Nome</label>{{ form.name }}</div>
+      <div><label class="label">E-mail</label>{{ form.email }}</div>
+      <div><label class="label">URL da foto</label>{{ form.avatar_url }}</div>
+      <button class="btn-primary">{% icon "lucide:save" "1em" %}Salvar</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <header class="card-header">
+      <h2 class="font-semibold text-zinc-900 flex items-center gap-2">{% icon "lucide:lock" "1.1em" %} Senha</h2>
+    </header>
+    <form method="post" class="card-body space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="form" value="password">
+      <div><label class="label">Senha atual</label>{{ password_form.current }}{% if password_form.current.errors %}<p class="form-error">{{ password_form.current.errors.0 }}</p>{% endif %}</div>
+      <div><label class="label">Nova senha</label>{{ password_form.new }}{% if password_form.new.errors %}<p class="form-error">{{ password_form.new.errors.0 }}</p>{% endif %}</div>
+      <div><label class="label">Confirmar nova senha</label>{{ password_form.confirm }}{% if password_form.confirm.errors %}<p class="form-error">{{ password_form.confirm.errors.0 }}</p>{% endif %}</div>
+      <button class="btn-primary">{% icon "lucide:key" "1em" %}Trocar senha</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

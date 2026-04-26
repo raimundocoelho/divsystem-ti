@@ -1,0 +1,18 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nova{% endif %} configuração{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Editar{% else %}Nova{% endif %} configuração{% endblock %}
+
+{% block content %}
+<form method="post" class="card max-w-2xl">
+  {% csrf_token %}
+  <div class="card-body space-y-4">
+    <div><label class="label">Chave</label>{{ form.key }}{% if form.key.errors %}<p class="form-error">{{ form.key.errors.0 }}</p>{% endif %}</div>
+    <div><label class="label">Valor</label>{{ form.value }}<p class="help">Pode ser string ou JSON.</p></div>
+  </div>
+  <div class="card-header bg-zinc-50/60 justify-end">
+    <a href="{% url 'configuracoes:list' %}" class="btn-secondary">Cancelar</a>
+    <button class="btn-primary">Salvar</button>
+  </div>
+</form>
+{% endblock %}

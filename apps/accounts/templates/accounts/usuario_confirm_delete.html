@@ -1,0 +1,18 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Excluir usuário{% endblock %}
+{% block page_title %}Excluir usuário{% endblock %}
+
+{% block content %}
+<form method="post" class="card max-w-lg">
+  {% csrf_token %}
+  <div class="card-body space-y-4">
+    <p>Tem certeza que deseja excluir <strong>{{ object.name }}</strong> ({{ object.email }})?</p>
+    <p class="text-sm text-zinc-500">Esta ação não pode ser desfeita.</p>
+  </div>
+  <div class="card-header bg-zinc-50/60 justify-end">
+    <a href="{% url 'accounts:usuarios' %}" class="btn-secondary">Cancelar</a>
+    <button class="btn-danger">{% icon "lucide:trash-2" "1em" %}Excluir</button>
+  </div>
+</form>
+{% endblock %}

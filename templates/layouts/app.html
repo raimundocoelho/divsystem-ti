@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load divsystem %}
+
+{% block body %}
+<div class="min-h-full flex">
+  {# Sidebar #}
+  <aside class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-zinc-900 lg:text-zinc-100">
+    <div class="flex h-16 items-center gap-3 px-5 border-b border-zinc-800">
+      <span class="grid place-items-center h-9 w-9 rounded-lg bg-blue-500 text-white">
+        {% icon "lucide:cpu" "1.4em" %}
+      </span>
+      <div class="flex flex-col leading-tight">
+        <span class="font-semibold tracking-tight">{{ APP_NAME }}</span>
+        <span class="text-[11px] uppercase tracking-wider text-zinc-400">{{ APP_TAGLINE }}</span>
+      </div>
+    </div>
+
+    {% if current_tenant %}
+    <div class="px-5 py-3 border-b border-zinc-800">
+      <p class="text-[11px] uppercase tracking-wider text-zinc-500">Prefeitura</p>
+      <p class="font-medium text-zinc-100 truncate">{{ current_tenant.name }}</p>
+      <p class="text-xs text-zinc-400 font-mono">{{ current_tenant.code }}</p>
+    </div>
+    {% endif %}
+
+    <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+      <a href="{% url 'dashboard:home' %}" class="nav-link {% active_url '/' %}">
+        {% icon "lucide:layout-dashboard" "1.1em" %}<span>Dashboard</span>
+      </a>
+
+      <p class="px-3 mt-5 mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Administração</p>
+
+      <a href="{% url 'organizacoes:secretaria_list' %}" class="nav-link {% active_url '/admin/organizacoes/secretarias' %}">
+        {% icon "lucide:building-2" "1.1em" %}<span>Secretarias</span>
+      </a>
+      <a href="{% url 'organizacoes:setor_list' %}" class="nav-link {% active_url '/admin/organizacoes/setores' %}">
+        {% icon "lucide:layers" "1.1em" %}<span>Setores</span>
+      </a>
+      <a href="{% url 'accounts:usuarios' %}" class="nav-link {% active_url '/contas/usuarios' %}">
+        {% icon "lucide:users" "1.1em" %}<span>Usuários</span>
+      </a>
+      <a href="{% url 'configuracoes:list' %}" class="nav-link {% active_url '/admin/configuracoes' %}">
+        {% icon "lucide:settings" "1.1em" %}<span>Configurações</span>
+      </a>
+
+      <p class="px-3 mt-5 mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Operação</p>
+
+      <a href="{% url 'agentes:list' %}" class="nav-link {% active_url '/admin/agentes' %}">
+        {% icon "lucide:shield" "1.1em" %}<span>Agentes</span>
+      </a>
+    </nav>
+
+    <div class="px-3 py-4 border-t border-zinc-800">
+      {% if user.is_authenticated %}
+        <a href="{% url 'accounts:perfil' %}" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-zinc-800 transition">
+          <span class="grid place-items-center h-9 w-9 rounded-full bg-zinc-700 text-zinc-100 text-sm font-semibold">
+            {{ user|initials }}
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate">{{ user.name }}</p>
+            <p class="text-xs text-zinc-400 truncate">{{ user.email }}</p>
+          </div>
+        </a>
+        <form method="post" action="{% url 'accounts:logout' %}" class="mt-2">
+          {% csrf_token %}
+          <button class="w-full nav-link text-left">
+            {% icon "lucide:log-out" "1.05em" %}<span>Sair</span>
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </aside>
+
+  {# Main #}
+  <div class="flex-1 lg:pl-64 flex flex-col">
+    <header class="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-zinc-200">
+      <div class="flex h-16 items-center justify-between gap-4 px-6">
+        <div class="flex items-center gap-3">
+          {% block header_left %}
+            <h1 class="text-lg font-semibold text-zinc-900">{% block page_title %}{% endblock %}</h1>
+            {% block breadcrumb %}{% endblock %}
+          {% endblock %}
+        </div>
+        <div class="flex items-center gap-3">
+          {% if user.is_authenticated %}
+            <span>{{ user|role_badge }}</span>
+            {% if user.is_global_admin %}
+              <a href="{% url 'accounts:tenant_selecionar' %}" class="btn-ghost">
+                {% icon "lucide:globe" "1em" %}<span class="hidden sm:inline">Trocar prefeitura</span>
+              </a>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    {% if messages %}
+      <div class="px-6 pt-4 space-y-2">
+        {% for message in messages %}
+          <div class="flash flash-{{ message.tags|default:'info' }}" x-data="{open: true}" x-show="open">
+            <span class="flex-1">{{ message }}</span>
+            <button @click="open = false" class="text-current/70 hover:text-current">{% icon "lucide:x" "1em" %}</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <main class="flex-1 px-6 py-6">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="px-6 py-4 text-xs text-zinc-400 border-t border-zinc-200">
+      © {% now "Y" %} SABIO SYSTEM TECNOLOGIA · INPI BR512026001444-1 · agente v{{ APP_VERSION_AGENTE }}
+    </footer>
+  </div>
+</div>
+{% endblock %}

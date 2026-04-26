@@ -1,0 +1,42 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Setores{% endblock %}
+{% block page_title %}Setores{% endblock %}
+
+{% block content %}
+<div class="card">
+  <header class="card-header">
+    <form method="get" class="flex flex-1 items-center gap-2">
+      <input class="input max-w-xs" type="search" name="q" placeholder="Buscar..." value="{{ q }}">
+      <select class="input max-w-[220px]" name="secretaria">
+        <option value="">Todas as secretarias</option>
+        {% for s in secretarias %}<option value="{{ s.pk }}" {% if secretaria_id == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
+      </select>
+      <button class="btn-secondary">Buscar</button>
+    </form>
+    <a href="{% url 'organizacoes:setor_new' %}" class="btn-primary">{% icon "lucide:plus" "1em" %}Novo setor</a>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Nome</th><th>Secretaria</th><th>Localização</th><th>Responsável</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+      <tbody>
+        {% for s in setores %}
+        <tr>
+          <td class="font-medium text-zinc-900">{{ s.nome }}</td>
+          <td class="text-zinc-600">{{ s.secretaria.nome|default:"—" }}</td>
+          <td class="text-zinc-600">{{ s.localizacao|default:"—" }}</td>
+          <td class="text-zinc-600">{{ s.responsavel|default:"—" }}</td>
+          <td>{% if s.ativo %}<span class="pill pill-online">Ativo</span>{% else %}<span class="pill pill-offline">Inativo</span>{% endif %}</td>
+          <td class="text-right space-x-1">
+            <a href="{% url 'organizacoes:setor_edit' s.pk %}" class="btn-secondary !py-1 !px-2 text-xs">Editar</a>
+            <a href="{% url 'organizacoes:setor_delete' s.pk %}" class="btn-danger !py-1 !px-2 text-xs">Excluir</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-zinc-500 py-10">Nenhum setor cadastrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

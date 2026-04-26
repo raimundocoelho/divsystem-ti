@@ -1,0 +1,14 @@
+{
+  "name": "divsystem-ti-theme",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tailwindcss -i ./theme/src/input.css -o ./static/css/divsystem.css --minify",
+    "dev": "tailwindcss -i ./theme/src/input.css -o ./static/css/divsystem.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "tailwindcss": "^4.1.11"
+  }
+}

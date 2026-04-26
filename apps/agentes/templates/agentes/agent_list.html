@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Agentes{% endblock %}
+{% block page_title %}Agentes{% endblock %}
+
+{% block content %}
+<div class="card">
+  <header class="card-header">
+    <form method="get" class="flex flex-1"><input class="input max-w-xs" type="search" name="q" placeholder="Buscar..." value="{{ request.GET.q }}"></form>
+    <a href="{% url 'agentes:new' %}" class="btn-primary">{% icon "lucide:plus" "1em" %}Cadastrar agente</a>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Nome / Hostname</th><th>Setor</th><th>Versão</th><th>Última conexão</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+      <tbody>
+        {% for a in agentes %}
+        <tr>
+          <td>
+            <a href="{% url 'agentes:detail' a.pk %}" class="font-medium text-zinc-900 hover:text-blue-600">{{ a.name }}</a>
+            <p class="text-xs text-zinc-500">{{ a.hostname|default:"—" }} · {{ a.machine_id|default:"sem HWID"|truncatechars:24 }}</p>
+          </td>
+          <td class="text-zinc-600">{{ a.secretaria.nome|default:"—" }}<br><span class="text-xs">{{ a.setor.nome|default:"" }}</span></td>
+          <td class="font-mono text-zinc-600">{{ a.agent_version|default:"—" }}</td>
+          <td class="text-zinc-500 text-xs">{{ a.last_seen_at|default:"—" }}</td>
+          <td><span class="pill pill-{{ a.online_status }}">{{ a.online_status_label }}</span></td>
+          <td class="text-right space-x-1">
+            <a href="{% url 'agentes:detail' a.pk %}" class="btn-secondary !py-1 !px-2 text-xs">Detalhes</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-zinc-500 py-10">Nenhum agente registrado ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

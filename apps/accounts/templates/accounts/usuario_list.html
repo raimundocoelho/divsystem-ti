@@ -1,0 +1,63 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Usuários{% endblock %}
+{% block page_title %}Usuários{% endblock %}
+
+{% block content %}
+<div class="card">
+  <header class="card-header">
+    <form method="get" class="flex flex-1 items-center gap-2">
+      <input class="input max-w-xs" type="search" name="q" placeholder="Buscar por nome ou e-mail" value="{{ q }}">
+      <select class="input max-w-[180px]" name="role">
+        <option value="">Todos os papéis</option>
+        {% for value, label in roles %}<option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <button class="btn-secondary">{% icon "lucide:search" "1em" %}Buscar</button>
+    </form>
+    <a href="{% url 'accounts:usuario_novo' %}" class="btn-primary">{% icon "lucide:user-plus" "1em" %}Novo usuário</a>
+  </header>
+
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr><th>Nome</th><th>E-mail</th><th>Prefeitura</th><th>Papel</th><th>Status</th><th class="text-right">Ações</th></tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td class="flex items-center gap-3">
+            <span class="grid place-items-center h-8 w-8 rounded-full bg-zinc-100 text-xs font-semibold text-zinc-700">{{ u|initials }}</span>
+            <span class="font-medium text-zinc-900">{{ u.name }}</span>
+          </td>
+          <td class="text-zinc-600">{{ u.email }}</td>
+          <td class="text-zinc-600">{{ u.tenant.name|default:"—" }}</td>
+          <td>{{ u|role_badge }}</td>
+          <td>
+            {% if u.is_active %}<span class="pill pill-online">Ativo</span>
+            {% else %}<span class="pill pill-offline">Inativo</span>{% endif %}
+          </td>
+          <td class="text-right space-x-1">
+            <a href="{% url 'accounts:usuario_editar' u.pk %}" class="btn-secondary !py-1 !px-2 text-xs">Editar</a>
+            {% if u.pk != request.user.pk %}
+            <a href="{% url 'accounts:usuario_excluir' u.pk %}" class="btn-danger !py-1 !px-2 text-xs">Excluir</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-zinc-500 py-10">Nenhum usuário encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+    <div class="card-body flex items-center justify-between text-sm text-zinc-600">
+      <span>Página {{ page_obj.number }} de {{ paginator.num_pages }} · {{ paginator.count }} usuário{{ paginator.count|pluralize }}</span>
+      <div class="space-x-2">
+        {% if page_obj.has_previous %}<a class="btn-secondary !py-1 !px-2" href="?page={{ page_obj.previous_page_number }}&q={{ q }}">Anterior</a>{% endif %}
+        {% if page_obj.has_next %}<a class="btn-secondary !py-1 !px-2" href="?page={{ page_obj.next_page_number }}&q={{ q }}">Próxima</a>{% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

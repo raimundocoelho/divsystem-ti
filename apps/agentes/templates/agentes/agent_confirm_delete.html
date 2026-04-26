@@ -1,0 +1,14 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Excluir agente{% endblock %}
+{% block page_title %}Excluir agente{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-lg">
+  {% csrf_token %}
+  <div class="card-body"><p>Excluir o agente <strong>{{ object.name }}</strong>?</p><p class="text-sm text-amber-700">O agente perderá acesso à API imediatamente.</p></div>
+  <div class="card-header bg-zinc-50/60 justify-end">
+    <a href="{% url 'agentes:list' %}" class="btn-secondary">Cancelar</a>
+    <button class="btn-danger">Excluir</button>
+  </div>
+</form>
+{% endblock %}

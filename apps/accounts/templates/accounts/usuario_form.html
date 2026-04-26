@@ -1,0 +1,26 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if form.instance.pk %}Editar{% else %}Novo{% endif %} usuário{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Editar{% else %}Novo{% endif %} usuário{% endblock %}
+
+{% block content %}
+<form method="post" class="card max-w-2xl">
+  {% csrf_token %}
+  <div class="card-body space-y-4">
+    {% if form.non_field_errors %}<div class="flash flash-error">{{ form.non_field_errors.0 }}</div>{% endif %}
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div><label class="label">Nome</label>{{ form.name }}{% if form.name.errors %}<p class="form-error">{{ form.name.errors.0 }}</p>{% endif %}</div>
+      <div><label class="label">E-mail</label>{{ form.email }}{% if form.email.errors %}<p class="form-error">{{ form.email.errors.0 }}</p>{% endif %}</div>
+      <div><label class="label">Papel</label>{{ form.role }}</div>
+      <div><label class="label">Prefeitura</label>{{ form.tenant }}</div>
+      <div class="sm:col-span-2"><label class="label">URL da foto</label>{{ form.avatar_url }}</div>
+      <div class="sm:col-span-2"><label class="label">Senha {% if form.instance.pk %}(deixe em branco para manter){% endif %}</label>{{ form.password }}</div>
+      <label class="flex items-center gap-2 text-sm">{{ form.is_active }} <span>Conta ativa</span></label>
+    </div>
+  </div>
+  <div class="card-header bg-zinc-50/60 justify-end">
+    <a href="{% url 'accounts:usuarios' %}" class="btn-secondary">Cancelar</a>
+    <button class="btn-primary">{% icon "lucide:save" "1em" %}Salvar</button>
+  </div>
+</form>
+{% endblock %}

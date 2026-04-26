@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Configurações{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+
+{% block content %}
+<div class="card">
+  <header class="card-header">
+    <p class="text-sm text-zinc-600">Pares chave-valor escopados por prefeitura. Use chaves como <code class="text-xs px-1 rounded bg-zinc-100">agent_master_key</code>.</p>
+    <a href="{% url 'configuracoes:new' %}" class="btn-primary">{% icon "lucide:plus" "1em" %}Nova chave</a>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Chave</th><th>Valor</th><th>Atualizado</th><th class="text-right">Ações</th></tr></thead>
+      <tbody>
+        {% for s in settings %}
+        <tr>
+          <td class="font-mono text-zinc-900">{{ s.key }}</td>
+          <td class="text-zinc-600 max-w-md truncate">{{ s.value|default:"—"|truncatechars:80 }}</td>
+          <td class="text-zinc-500 text-xs">{{ s.updated_at|date:"d/m/Y H:i" }}</td>
+          <td class="text-right space-x-1">
+            <a href="{% url 'configuracoes:edit' s.pk %}" class="btn-secondary !py-1 !px-2 text-xs">Editar</a>
+            <a href="{% url 'configuracoes:delete' s.pk %}" class="btn-danger !py-1 !px-2 text-xs">Excluir</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-zinc-500 py-10">Nenhuma configuração ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

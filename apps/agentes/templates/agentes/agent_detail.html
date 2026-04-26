@@ -1,0 +1,60 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{{ agente.name }}{% endblock %}
+{% block page_title %}{{ agente.name }}{% endblock %}
+
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <section class="card lg:col-span-2">
+    <header class="card-header">
+      <h2 class="font-semibold flex items-center gap-2">{% icon "lucide:cpu" "1.1em" %}Informações</h2>
+      <span class="pill pill-{{ agente.online_status }}">{{ agente.online_status_label }}</span>
+    </header>
+    <dl class="card-body grid sm:grid-cols-2 gap-4 text-sm">
+      <div><dt class="text-zinc-500">Hostname</dt><dd>{{ agente.hostname|default:"—" }}</dd></div>
+      <div><dt class="text-zinc-500">Machine ID</dt><dd class="font-mono">{{ agente.machine_id|default:"—" }}</dd></div>
+      <div><dt class="text-zinc-500">Versão</dt><dd class="font-mono">{{ agente.agent_version|default:"—" }}</dd></div>
+      <div><dt class="text-zinc-500">Token</dt><dd class="font-mono break-all text-xs">{{ agente.token }}</dd></div>
+      <div><dt class="text-zinc-500">Secretaria</dt><dd>{{ agente.secretaria.nome|default:"—" }}</dd></div>
+      <div><dt class="text-zinc-500">Setor</dt><dd>{{ agente.setor.nome|default:"—" }}</dd></div>
+      <div><dt class="text-zinc-500">Last seen</dt><dd>{{ agente.last_seen_at|default:"—" }}</dd></div>
+      <div><dt class="text-zinc-500">Last ping</dt><dd>{{ agente.last_ping_at|default:"—" }}</dd></div>
+    </dl>
+    <footer class="card-header bg-zinc-50/60 justify-end">
+      <a href="{% url 'agentes:edit' agente.pk %}" class="btn-secondary">Editar</a>
+      <a href="{% url 'agentes:delete' agente.pk %}" class="btn-danger">Excluir</a>
+    </footer>
+  </section>
+
+  <section class="card">
+    <header class="card-header"><h2 class="font-semibold flex items-center gap-2">{% icon "lucide:terminal" "1.1em" %}Enviar comando</h2></header>
+    <form method="post" action="{% url 'agentes:send_command' agente.pk %}" class="card-body space-y-3">
+      {% csrf_token %}
+      <div><label class="label">Comando</label>{{ send_command_form.cmd_type }}</div>
+      <div><label class="label">Payload (JSON)</label>{{ send_command_form.cmd_payload }}</div>
+      <button class="btn-primary w-full">{% icon "lucide:send" "1em" %}Enfileirar</button>
+    </form>
+  </section>
+</div>
+
+<section class="card mt-6">
+  <header class="card-header"><h2 class="font-semibold flex items-center gap-2">{% icon "lucide:list" "1.1em" %}Comandos recentes</h2></header>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Quando</th><th>Comando</th><th>Status</th><th>Saída</th></tr></thead>
+      <tbody>
+        {% for c in recent_commands %}
+        <tr>
+          <td class="text-xs text-zinc-500">{{ c.created_at|date:"d/m H:i:s" }}</td>
+          <td class="font-mono">{{ c.command }}</td>
+          <td><span class="pill pill-{{ c.status_color }}">{{ c.get_status_display }}</span></td>
+          <td class="text-zinc-600 max-w-sm truncate">{{ c.output|default:c.error|truncatechars:80 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-zinc-500 py-6">Sem comandos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
