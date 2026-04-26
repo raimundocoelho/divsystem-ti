@@ -18,3 +18,4 @@ theme/static_src/dist/
 /tmp/
 .railway/
 .cache/
+.claude/
