@@ -4,30 +4,152 @@
 {% block page_title %}{{ agente.name }}{% endblock %}
 
 {% block content %}
-<div class="grid lg:grid-cols-3 gap-6">
-  <section class="card lg:col-span-2">
+{# ─────────── Header com identidade + ações rápidas ─────────── #}
+<div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+  <div>
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">{{ agente.hostname|default:agente.name }}</h1>
+      <span class="pill pill-{{ agente.online_status }}">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
+        {{ agente.online_status_label }}
+      </span>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-slate-500 mt-1 font-mono">
+      <span>{{ agente.machine_id|default:"—" }}</span>
+      <span class="text-slate-300">·</span>
+      <span>v{{ agente.agent_version|default:"—" }}</span>
+      {% if agente.last_seen_at %}
+        <span class="text-slate-300">·</span>
+        <span>visto {{ agente.last_seen_at|date:"d/m H:i" }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <button type="button" onclick="window.location.reload()" class="btn-ghost text-xs" title="Recarregar página">
+      {% icon "lucide:refresh-cw" "0.9em" "text-slate-500" %}<span>Atualizar</span>
+    </button>
+    <form method="post" action="{% url 'agentes:send_command' agente.pk %}" class="inline">
+      {% csrf_token %}
+      <input type="hidden" name="cmd_type" value="restart_pc">
+      <input type="hidden" name="cmd_payload" value='{"delay_seconds":30}'>
+      <button class="btn-secondary text-xs" title="Reiniciar PC remoto"
+              onclick="return confirm('Reiniciar este computador em 30 segundos?');">
+        {% icon "lucide:rotate-ccw" "0.9em" %}<span>Reiniciar</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+{# ─────────── KPI cards ─────────── #}
+{% if latest_heartbeat %}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:cpu" "1em" "text-indigo-500" %}<span>CPU</span>
+    </div>
+    {% with hw=latest_heartbeat.hardware %}{% if hw %}
+      <div class="flex items-baseline gap-1.5">
+        <span class="text-2xl font-semibold leading-none">{{ hw.cpu_cores|default:"—" }}</span>
+        <span class="text-xs text-slate-500">núcleos{% if hw.cpu_logical %} · {{ hw.cpu_logical }}T{% endif %}</span>
+      </div>
+      <div class="text-xs text-slate-500 mt-1 truncate" title="{{ hw.cpu_model }}">{{ hw.cpu_model|default:"—" }}</div>
+    {% else %}<div class="text-2xl font-semibold leading-none">—</div>{% endif %}{% endwith %}
+  </div>
+
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:memory-stick" "1em" "text-emerald-500" %}<span>Memória</span>
+    </div>
+    {% with hw=latest_heartbeat.hardware %}{% if hw %}
+      <div class="flex items-baseline gap-1.5">
+        <span class="text-2xl font-semibold leading-none">{{ hw.ram_total_gb|default:"—" }}</span>
+        <span class="text-xs text-slate-500">GB</span>
+      </div>
+      <div class="text-xs text-slate-500 mt-1 truncate">{{ hw.system_type|default:"—" }}</div>
+    {% else %}<div class="text-2xl font-semibold leading-none">—</div>{% endif %}{% endwith %}
+  </div>
+
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:hard-drive" "1em" "text-amber-500" %}<span>Disco</span>
+    </div>
+    {% with hw=latest_heartbeat.hardware %}{% if hw and hw.disk_total_gb %}
+      {% with used=hw.disk_free_gb|used_pct:hw.disk_total_gb %}
+      <div class="flex items-baseline gap-1.5">
+        <span class="text-2xl font-semibold leading-none">{{ used }}</span>
+        <span class="text-xs text-slate-500">% usado</span>
+      </div>
+      <div class="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+        <div class="h-full bg-amber-500" style="width: {{ used }}%"></div>
+      </div>
+      <div class="text-xs text-slate-500 mt-1">{{ hw.disk_free_gb }} GB livres de {{ hw.disk_total_gb }} GB</div>
+      {% endwith %}
+    {% else %}<div class="text-2xl font-semibold leading-none">—</div>{% endif %}{% endwith %}
+  </div>
+
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:timer" "1em" "text-sky-500" %}<span>Uptime</span>
+    </div>
+    {% with sys=latest_heartbeat.system_info %}{% if sys %}
+      <div class="flex items-baseline gap-1.5">
+        <span class="text-2xl font-semibold leading-none">{{ sys.uptime_seconds|humanize_uptime }}</span>
+      </div>
+      <div class="text-xs text-slate-500 mt-1 truncate" title="{{ sys.current_user }}">
+        {% if sys.current_user %}{{ sys.current_user }}{% else %}—{% endif %}
+      </div>
+    {% else %}<div class="text-2xl font-semibold leading-none">—</div>{% endif %}{% endwith %}
+  </div>
+
+</div>
+{% endif %}
+
+{# ─────────── Identificação + Enviar comando ─────────── #}
+<div class="grid lg:grid-cols-3 gap-4">
+
+  <section class="card lg:col-span-2 self-start">
     <header class="card-header">
-      <h2 class="font-semibold flex items-center gap-2">{% icon "lucide:cpu" "1.1em" %}Informações</h2>
-      <span class="pill pill-{{ agente.online_status }}">{{ agente.online_status_label }}</span>
+      <h2 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:id-card" "1.1em" "text-indigo-500" %}<span>Identificação</span>
+      </h2>
+      <span class="text-xs text-slate-500 inline-flex items-center gap-1">
+        {% icon "lucide:refresh-cw" "0.85em" "text-slate-400" %}sincronizado pelo agente
+      </span>
     </header>
-    <dl class="card-body grid sm:grid-cols-2 gap-4 text-sm">
-      <div><dt class="text-zinc-500">Hostname</dt><dd>{{ agente.hostname|default:"—" }}</dd></div>
-      <div><dt class="text-zinc-500">Machine ID</dt><dd class="font-mono">{{ agente.machine_id|default:"—" }}</dd></div>
-      <div><dt class="text-zinc-500">Versão</dt><dd class="font-mono">{{ agente.agent_version|default:"—" }}</dd></div>
-      <div><dt class="text-zinc-500">Token</dt><dd class="font-mono break-all text-xs">{{ agente.token }}</dd></div>
-      <div><dt class="text-zinc-500">Secretaria</dt><dd>{{ agente.secretaria.nome|default:"—" }}</dd></div>
-      <div><dt class="text-zinc-500">Setor</dt><dd>{{ agente.setor.nome|default:"—" }}</dd></div>
-      <div><dt class="text-zinc-500">Last seen</dt><dd>{{ agente.last_seen_at|default:"—" }}</dd></div>
-      <div><dt class="text-zinc-500">Last ping</dt><dd>{{ agente.last_ping_at|default:"—" }}</dd></div>
+    <dl class="card-body grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Hostname</dt><dd>{{ agente.hostname|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Versão</dt><dd class="font-mono">{{ agente.agent_version|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Secretaria</dt><dd>{{ agente.secretaria.nome|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Setor</dt><dd>{{ agente.setor.nome|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Last seen</dt><dd>{{ agente.last_seen_at|date:"d/m/Y H:i:s"|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Last ping</dt><dd>{{ agente.last_ping_at|date:"d/m/Y H:i:s"|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3 sm:col-span-2"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Machine ID</dt><dd class="font-mono break-all text-xs">{{ agente.machine_id|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3 sm:col-span-2" x-data="{ shown:false, copied:false }">
+        <dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Token</dt>
+        <dd class="flex-1 flex items-center gap-2">
+          <span class="font-mono break-all text-xs flex-1" x-text="shown ? '{{ agente.token }}' : '••••••••••••••••••••••••••••••••'"></span>
+          <button type="button" @click="shown = !shown" class="btn-ghost text-xs" :title="shown ? 'Ocultar' : 'Mostrar'">
+            <span x-show="!shown">{% icon "lucide:eye" "0.9em" %}</span>
+            <span x-show="shown" x-cloak>{% icon "lucide:eye-off" "0.9em" %}</span>
+          </button>
+          <button type="button"
+                  @click="navigator.clipboard.writeText('{{ agente.token }}'); copied = true; setTimeout(()=>copied=false, 1500);"
+                  class="btn-ghost text-xs" title="Copiar token">
+            <span x-show="!copied">{% icon "lucide:copy" "0.9em" %}</span>
+            <span x-show="copied" x-cloak class="text-emerald-600">{% icon "lucide:check" "0.9em" %}</span>
+          </button>
+        </dd>
+      </div>
     </dl>
-    <footer class="card-header bg-zinc-50/60 justify-end">
-      <a href="{% url 'agentes:edit' agente.pk %}" class="btn-secondary">Editar</a>
-      <a href="{% url 'agentes:delete' agente.pk %}" class="btn-danger">Excluir</a>
-    </footer>
   </section>
 
-  <section class="card">
-    <header class="card-header"><h2 class="font-semibold flex items-center gap-2">{% icon "lucide:terminal" "1.1em" %}Enviar comando</h2></header>
+  <section class="card self-start">
+    <header class="card-header">
+      <h2 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:terminal" "1.1em" "text-indigo-500" %}<span>Enviar comando</span>
+      </h2>
+    </header>
     <form method="post" action="{% url 'agentes:send_command' agente.pk %}" class="card-body space-y-3">
       {% csrf_token %}
       <div><label class="label">Comando</label>{{ send_command_form.cmd_type }}</div>
@@ -35,23 +157,146 @@
       <button class="btn-primary w-full">{% icon "lucide:send" "1em" %}Enfileirar</button>
     </form>
   </section>
+
 </div>
 
-<section class="card mt-6">
-  <header class="card-header"><h2 class="font-semibold flex items-center gap-2">{% icon "lucide:list" "1.1em" %}Comandos recentes</h2></header>
+{# ─────────── Inventário ─────────── #}
+{% if latest_heartbeat %}
+{% with hw=latest_heartbeat.hardware net=latest_heartbeat.network sys=latest_heartbeat.system_info %}
+<section class="card mt-4">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:server" "1.1em" "text-indigo-500" %}<span>Inventário</span>
+    </h2>
+    <span class="text-xs text-slate-500">
+      {% icon "lucide:clock" "0.9em" "text-slate-400" %}
+      coletado em {{ latest_heartbeat.collected_at|date:"d/m/Y H:i"|default:latest_heartbeat.created_at|date:"d/m/Y H:i" }}
+    </span>
+  </header>
+
+  <div class="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+
+    {# ── Hardware ── #}
+    <div class="p-5">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+        {% icon "lucide:cpu" "1.1em" "text-indigo-500" %}<span>Hardware</span>
+      </h3>
+      {% if hw %}
+      <dl class="space-y-2.5 text-sm">
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">CPU</dt><dd class="break-words">{{ hw.cpu_model|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">Núcleos</dt><dd>{{ hw.cpu_cores|default:"—" }}{% if hw.cpu_logical %} <span class="text-slate-400">({{ hw.cpu_logical }} lógicos)</span>{% endif %}{% if hw.cpu_clock_mhz %} <span class="text-slate-400">· {{ hw.cpu_clock_mhz }} MHz</span>{% endif %}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">RAM</dt><dd>{% if hw.ram_total_gb %}{{ hw.ram_total_gb }} GB{% else %}—{% endif %}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">Modelo</dt><dd class="break-words">{{ hw.motherboard_manufacturer|default:"" }} {{ hw.motherboard_product|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">BIOS</dt><dd class="break-words text-xs">{{ hw.bios_manufacturer|default:"" }} {{ hw.bios_version|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">Serial</dt><dd class="font-mono text-xs break-all">{{ hw.serial_number|default:"—" }}</dd></div>
+        {% if hw.disks %}
+        <div>
+          <dt class="text-slate-500 text-xs uppercase tracking-wider mb-1.5">Discos</dt>
+          <dd class="space-y-2">
+            {% for d in hw.disks %}
+              {% with used=d.free_gb|used_pct:d.total_gb %}
+              <div>
+                <div class="flex items-baseline gap-2 text-xs">
+                  <span class="font-mono font-semibold">{{ d.device }}</span>
+                  <span class="text-slate-400">{{ d.filesystem|default:"" }}</span>
+                  {% if d.volume_name %}<span class="text-slate-500 truncate">{{ d.volume_name }}</span>{% endif %}
+                  <span class="ml-auto text-slate-700">{{ d.free_gb }} <span class="text-slate-400">/ {{ d.total_gb }} GB</span></span>
+                </div>
+                <div class="mt-1 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-amber-500" style="width: {{ used }}%"></div>
+                </div>
+              </div>
+              {% endwith %}
+            {% endfor %}
+          </dd>
+        </div>
+        {% endif %}
+      </dl>
+      {% else %}
+      <p class="text-xs text-slate-400 italic">Sem dados coletados.</p>
+      {% endif %}
+    </div>
+
+    {# ── Rede ── #}
+    <div class="p-5">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+        {% icon "lucide:network" "1.1em" "text-emerald-500" %}<span>Rede</span>
+      </h3>
+      {% if net %}
+      <dl class="space-y-2.5 text-sm">
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">IP</dt><dd class="font-mono">{{ net.local_ip|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">MAC</dt><dd class="font-mono">{{ net.mac_address|format_mac }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">Gateway</dt><dd class="font-mono">{{ net.gateway|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">DNS</dt><dd class="font-mono text-xs break-all">{{ net.dns|join:", "|default:"—" }}</dd></div>
+        <div>
+          <dt class="text-slate-500 text-xs uppercase tracking-wider mb-1">Interface</dt>
+          <dd>
+            <div class="break-words">{{ net.interface_description|default:net.interface_name|default:"—" }}</div>
+            {% if net.interface_type %}<div class="text-xs text-slate-500">{{ net.interface_type }}{% if net.interface_speed_mbps %} · {{ net.interface_speed_mbps }} Mbps{% endif %}</div>{% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-slate-500 text-xs uppercase tracking-wider mb-1">Tráfego desde o boot</dt>
+          <dd class="flex items-center gap-3 text-xs">
+            <span class="inline-flex items-center gap-1 text-emerald-600">{% icon "lucide:arrow-up" "0.9em" %}{{ net.bytes_sent|default:0|filesizeformat }}</span>
+            <span class="inline-flex items-center gap-1 text-sky-600">{% icon "lucide:arrow-down" "0.9em" %}{{ net.bytes_received|default:0|filesizeformat }}</span>
+          </dd>
+        </div>
+      </dl>
+      {% else %}
+      <p class="text-xs text-slate-400 italic">Sem dados coletados.</p>
+      {% endif %}
+    </div>
+
+    {# ── Sistema ── #}
+    <div class="p-5">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+        {% icon "lucide:monitor" "1.1em" "text-sky-500" %}<span>Sistema</span>
+      </h3>
+      {% if sys %}
+      <dl class="space-y-2.5 text-sm">
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">SO</dt><dd class="break-words">{{ sys.os_name|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Versão</dt><dd class="font-mono text-xs">{{ sys.os_version|default:"—" }}{% if sys.os_build %} · {{ sys.os_build }}{% endif %}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Arquitetura</dt><dd>{{ sys.os_arch|default:"—" }}{% if sys.agent_arch %} <span class="text-slate-400">· agente {{ sys.agent_arch }}</span>{% endif %}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Usuário</dt><dd class="break-words">{{ sys.current_user|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Último boot</dt><dd class="text-xs">{{ sys.last_boot|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Uptime</dt><dd class="font-medium">{{ sys.uptime_seconds|humanize_uptime }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Processos</dt><dd>{{ sys.processes_count|default:"—" }}</dd></div>
+        <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Instalado em</dt><dd class="text-xs">{{ sys.os_install_date|default:"—" }}</dd></div>
+      </dl>
+      {% else %}
+      <p class="text-xs text-slate-400 italic">Sem dados coletados.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+{% endwith %}
+{% endif %}
+
+{# ─────────── Comandos recentes ─────────── #}
+<section class="card mt-4">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:list" "1.1em" "text-indigo-500" %}<span>Comandos recentes</span>
+    </h2>
+    <span class="text-xs text-slate-500">{{ recent_commands|length }} {% if recent_commands|length == 1 %}registro{% else %}registros{% endif %}</span>
+  </header>
   <div class="overflow-x-auto">
     <table class="table">
       <thead><tr><th>Quando</th><th>Comando</th><th>Status</th><th>Saída</th></tr></thead>
       <tbody>
         {% for c in recent_commands %}
         <tr>
-          <td class="text-xs text-zinc-500">{{ c.created_at|date:"d/m H:i:s" }}</td>
-          <td class="font-mono">{{ c.command }}</td>
+          <td class="text-xs text-slate-500 whitespace-nowrap">{{ c.created_at|date:"d/m H:i:s" }}</td>
+          <td class="font-mono text-xs">{{ c.command }}</td>
           <td><span class="pill pill-{{ c.status_color }}">{{ c.get_status_display }}</span></td>
-          <td class="text-zinc-600 max-w-sm truncate">{{ c.output|default:c.error|truncatechars:80 }}</td>
+          <td class="text-slate-600 max-w-md truncate text-xs" title="{{ c.output|default:c.error }}">{{ c.output|default:c.error|truncatechars:120 }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" class="text-center text-zinc-500 py-6">Sem comandos.</td></tr>
+        <tr><td colspan="4" class="text-center text-slate-500 py-8">
+          {% icon "lucide:inbox" "1.5em" "text-slate-300" %}<div class="mt-1">Sem comandos recentes</div>
+        </td></tr>
         {% endfor %}
       </tbody>
     </table>

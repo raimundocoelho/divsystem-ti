@@ -1,0 +1,219 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Políticas de Sites{% endblock %}
+{% block page_title %}Políticas de Sites{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <span>Políticas de Sites</span>
+{% endblock %}
+
+{% block content %}
+<div x-data="{
+  showCreate: false,
+  showRules: false,
+  showAssign: false,
+  showEdit: false,
+  modalBody: '',
+}" class="space-y-4">
+
+  <!-- Header -->
+  <div class="flex items-end gap-3">
+    <div>
+      <p class="text-sm text-slate-500">
+        Gerencie políticas de bloqueio/liberação de sites por categorias e domínios individuais.
+      </p>
+    </div>
+    <div class="flex-1"></div>
+    <form method="get" class="flex">
+      <input type="text" name="q" value="{{ busca }}" placeholder="Buscar política..." class="input text-sm w-64" />
+    </form>
+    <button @click="showCreate = true" class="btn-primary text-sm">
+      {% icon "lucide:plus" "1em" %}<span>Nova Política</span>
+    </button>
+  </div>
+
+  <!-- Lista de políticas -->
+  {% if not politicas %}
+    <div class="card">
+      <div class="p-10 text-center">
+        {% icon "lucide:shield" "2em" "text-indigo-300 mx-auto" %}
+        <p class="text-sm text-slate-500 mt-3">
+          Nenhuma política criada. Clique em "Nova Política" para começar.
+        </p>
+      </div>
+    </div>
+  {% else %}
+    <div class="space-y-2">
+      {% for p in politicas %}
+      <div class="card flex items-center gap-3 px-4 py-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold">{{ p.nome }}</span>
+            {% if p.ativo %}
+              <span class="pill pill-aceito">Ativa</span>
+            {% else %}
+              <span class="pill pill-ignorado">Pausada</span>
+            {% endif %}
+            {% if p.is_global %}
+              <span class="text-[10px] uppercase tracking-wide bg-indigo-100 text-indigo-700 rounded px-1.5 py-0.5">Global</span>
+            {% endif %}
+            {% if p.aplicada_em %}
+              <span class="text-[10px] text-emerald-600">● Aplicada {{ p.aplicada_em|timesince }} atrás</span>
+            {% else %}
+              <span class="text-[10px] text-amber-600">○ Nunca aplicada</span>
+            {% endif %}
+          </div>
+          <div class="text-xs text-slate-500 mt-0.5">
+            {{ p.n_regras }} regra{{ p.n_regras|pluralize:"s" }} · {{ p.n_alvos }} alvo{{ p.n_alvos|pluralize:"s" }} ·
+            Criada por {% if p.criado_por %}{{ p.criado_por.get_full_name|default:p.criado_por.email }}{% else %}sistema{% endif %} ·
+            Equipamento <span class="font-mono text-[10px]">{{ p.equipamento.slug }}</span>
+          </div>
+        </div>
+
+        <button class="btn-secondary text-xs"
+                hx-get="{% url 'mikrotik:tenant_politica_rules_modal' p.pk %}"
+                hx-target="#rules-modal-body"
+                hx-swap="innerHTML"
+                @click="showRules = true">
+          {% icon "lucide:shield" "0.9em" %}<span>Regras</span>
+        </button>
+
+        <button class="btn-secondary text-xs"
+                {% if p.is_global %}disabled title="Política global não usa alvos"{% endif %}
+                hx-get="{% url 'mikrotik:tenant_politica_assign_modal' p.pk %}"
+                hx-target="#assign-modal-body"
+                hx-swap="innerHTML"
+                @click="showAssign = true">
+          {% icon "lucide:monitor" "0.9em" %}<span>Atribuir</span>
+        </button>
+
+        <form method="post" action="{% url 'mikrotik:tenant_politica_aplicar' p.pk %}" class="inline"
+              onsubmit="return confirm('Aplicar política no router?');">
+          {% csrf_token %}
+          <button class="btn-primary text-xs" {% if not p.ativo %}disabled{% endif %}>
+            {% icon "lucide:upload-cloud" "0.9em" %}<span>Aplicar</span>
+          </button>
+        </form>
+
+        <form method="post" action="{% url 'mikrotik:tenant_politica_toggle_active' p.pk %}" class="inline">
+          {% csrf_token %}
+          <button class="btn-ghost !p-1.5" title="{% if p.ativo %}Pausar{% else %}Ativar{% endif %}">
+            {% if p.ativo %}{% icon "lucide:pause" "1em" %}{% else %}{% icon "lucide:play" "1em" %}{% endif %}
+          </button>
+        </form>
+
+        <button class="btn-ghost !p-1.5" title="Editar"
+                hx-get="{% url 'mikrotik:tenant_politica_edit' p.pk %}"
+                hx-target="#edit-modal-body"
+                hx-swap="innerHTML"
+                @click="showEdit = true">
+          {% icon "lucide:pencil" "1em" %}
+        </button>
+
+        <form method="post" action="{% url 'mikrotik:tenant_politica_delete' p.pk %}" class="inline"
+              onsubmit="return confirm('Apagar política {{ p.nome|escapejs }} definitivamente? Vai remover do router e do banco.');">
+          {% csrf_token %}
+          <button class="btn-ghost !p-1.5 text-red-600" title="Apagar">
+            {% icon "lucide:trash-2" "1em" %}
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- ===================== Modal: Nova Política ===================== -->
+  <div x-show="showCreate" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50"
+       @keydown.escape.window="showCreate = false">
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md" @click.outside="showCreate = false">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+          <h3 class="font-semibold">Nova Política</h3>
+          <button @click="showCreate = false" class="text-slate-400 hover:text-slate-600">
+            {% icon "lucide:x" "1.2em" %}
+          </button>
+        </div>
+        <form method="post" action="{% url 'mikrotik:tenant_politica_create' %}" class="p-5 space-y-3">
+          {% csrf_token %}
+          <div>
+            <label class="label">Nome</label>
+            <input type="text" name="nome" required maxlength="120" class="input" placeholder="Ex: Padrão Geral, Recepção, TI...">
+          </div>
+          <div>
+            <label class="label">Descrição</label>
+            <input type="text" name="descricao" maxlength="255" class="input" placeholder="Descrição da política...">
+          </div>
+          {% if equipamentos|length > 1 %}
+          <div>
+            <label class="label">Equipamento</label>
+            <select name="equipamento_id" class="input">
+              {% for e in equipamentos %}<option value="{{ e.pk }}">{{ e.nome }}</option>{% endfor %}
+            </select>
+          </div>
+          {% else %}
+            {% with eq=equipamentos.0 %}{% if eq %}<input type="hidden" name="equipamento_id" value="{{ eq.pk }}">{% endif %}{% endwith %}
+          {% endif %}
+          <label class="flex items-start gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="is_global" class="mt-0.5">
+            <span>
+              <span class="font-medium">Política Global</span>
+              <span class="block text-xs text-slate-500">Aplica DNS sinkhole pra todos os clientes do hEX (sem firewall por device)</span>
+            </span>
+          </label>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" @click="showCreate = false" class="btn-ghost text-sm">Cancelar</button>
+            <button type="submit" class="btn-primary text-sm">Criar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Modal: Regras (HTMX-loaded) ===================== -->
+  <div x-show="showRules" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50"
+       @keydown.escape.window="showRules = false">
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+           @click.outside="showRules = false">
+        <div id="rules-modal-body" class="flex-1 overflow-auto min-h-0">
+          <!-- HTMX preenche aqui -->
+          <div class="p-10 text-center text-slate-400 text-sm">Carregando...</div>
+        </div>
+        <div class="px-5 py-3 border-t border-slate-200 flex justify-end">
+          <button @click="showRules = false" class="btn-secondary text-sm">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Modal: Atribuir (HTMX-loaded) ===================== -->
+  <div x-show="showAssign" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50"
+       @keydown.escape.window="showAssign = false">
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col"
+           @click.outside="showAssign = false">
+        <div id="assign-modal-body" class="flex-1 overflow-auto min-h-0">
+          <div class="p-10 text-center text-slate-400 text-sm">Carregando...</div>
+        </div>
+        <div class="px-5 py-3 border-t border-slate-200 flex justify-end">
+          <button @click="showAssign = false" class="btn-secondary text-sm">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Modal: Editar (HTMX-loaded) ===================== -->
+  <div x-show="showEdit" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50"
+       @keydown.escape.window="showEdit = false">
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md" @click.outside="showEdit = false">
+        <div id="edit-modal-body">
+          <div class="p-10 text-center text-slate-400 text-sm">Carregando...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

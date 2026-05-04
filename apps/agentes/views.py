@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView, View
+from django.views.generic import DeleteView, DetailView, ListView, UpdateView, View
 
 from apps.core.permissions import UserRole
 from apps.core.views_mixins import RoleRequiredMixin
@@ -25,14 +25,6 @@ class AgenteListView(RoleRequiredMixin, ListView):
         return qs.order_by("name")
 
 
-class AgenteCreateView(RoleRequiredMixin, CreateView):
-    required_role = UserRole.GESTOR
-    model = AgentToken
-    form_class = AgentTokenForm
-    template_name = "agentes/agent_form.html"
-    success_url = reverse_lazy("agentes:list")
-
-
 class AgenteUpdateView(RoleRequiredMixin, UpdateView):
     required_role = UserRole.GESTOR
     model = AgentToken
@@ -48,9 +40,22 @@ class AgenteDetailView(RoleRequiredMixin, DetailView):
     context_object_name = "agente"
 
     def get_context_data(self, **kwargs):
+        from django.db.models import Q
         ctx = super().get_context_data(**kwargs)
         agente = self.object
-        ctx["latest_heartbeat"] = agente.heartbeats.order_by("-created_at").first()
+        # Pega o último heartbeat que TEM ALGUM dado coletado. Heartbeats vazios
+        # (hardware/network/system_info todos null) ocorrem quando o collector
+        # do agente teve erro — não servem pra render do inventário.
+        ctx["latest_heartbeat"] = (
+            agente.heartbeats
+            .filter(
+                Q(hardware__isnull=False)
+                | Q(network__isnull=False)
+                | Q(system_info__isnull=False)
+            )
+            .order_by("-created_at")
+            .first()
+        )
         ctx["recent_commands"] = agente.remote_commands.order_by("-created_at")[:20]
         ctx["send_command_form"] = SendCommandForm()
         return ctx

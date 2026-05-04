@@ -1,0 +1,80 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Políticas · {{ eq.nome }}{% endblock %}
+{% block page_title %}Políticas de filtro · {{ eq.nome }}{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:list' %}" class="text-slate-500 hover:text-indigo-600">Mikrotik</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:detail' eq.slug %}" class="text-slate-500 hover:text-indigo-600">{{ eq.nome }}</a>
+  <span class="crumb-sep">/</span>
+  <span>Políticas</span>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-2 mb-4">
+  <div class="flex-1"></div>
+  <a href="{% url 'mikrotik:politica_create' eq.slug %}" class="btn-primary text-sm">
+    {% icon "lucide:plus" "1em" %}<span>Nova política</span>
+  </a>
+</div>
+
+<div class="card">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:filter" "1.1em" "text-indigo-500" %}<span>Políticas configuradas</span>
+    </h2>
+    <span class="text-xs text-slate-500">{{ politicas|length }} política{{ politicas|length|pluralize:"s" }}</span>
+  </header>
+
+  {% if not politicas %}
+    <div class="p-6 text-sm text-slate-500 text-center">
+      Nenhuma política ainda. Crie uma pra começar a bloquear sites por device.
+    </div>
+  {% else %}
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Domínios</th>
+          <th>Alvos</th>
+          <th>Status</th>
+          <th>Aplicada em</th>
+          <th class="text-right">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in politicas %}
+        <tr>
+          <td>
+            <a href="{% url 'mikrotik:politica_detail' eq.slug p.pk %}" class="font-medium hover:text-indigo-600">{{ p.nome }}</a>
+            {% if p.descricao %}<div class="text-xs text-slate-500">{{ p.descricao }}</div>{% endif %}
+          </td>
+          <td class="text-xs">{{ p.regras.count }}</td>
+          <td class="text-xs">{{ p.alvos.count }}</td>
+          <td>
+            {% if p.ativo %}
+              <span class="pill pill-aceito">Ativa</span>
+            {% else %}
+              <span class="pill pill-ignorado">Inativa</span>
+            {% endif %}
+          </td>
+          <td class="text-xs text-zinc-500">
+            {% if p.aplicada_em %}{{ p.aplicada_em|date:"d/m H:i" }}{% else %}<span class="text-slate-400">nunca</span>{% endif %}
+            {% if p.aplicada_erro %}<div class="text-[10px] text-red-600">⚠ último erro</div>{% endif %}
+          </td>
+          <td class="text-right">
+            <a href="{% url 'mikrotik:politica_detail' eq.slug p.pk %}" class="btn-secondary !py-1 !px-2 text-xs">
+              {% icon "lucide:settings" "0.9em" %}<span>Gerenciar</span>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

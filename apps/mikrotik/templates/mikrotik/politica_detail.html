@@ -1,0 +1,157 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{{ politica.nome }} · {{ eq.nome }}{% endblock %}
+{% block page_title %}{{ politica.nome }}{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:list' %}" class="text-slate-500 hover:text-indigo-600">Mikrotik</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:detail' eq.slug %}" class="text-slate-500 hover:text-indigo-600">{{ eq.nome }}</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:politica_list' eq.slug %}" class="text-slate-500 hover:text-indigo-600">Políticas</a>
+  <span class="crumb-sep">/</span>
+  <span>{{ politica.nome }}</span>
+{% endblock %}
+
+{% block content %}
+<!-- Header / actions -->
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <div>
+    {% if politica.ativo %}
+      <span class="pill pill-aceito">Ativa</span>
+    {% else %}
+      <span class="pill pill-ignorado">Inativa</span>
+    {% endif %}
+    {% if politica.aplicada_em %}
+      <span class="text-xs text-slate-500 ml-2">Aplicada em {{ politica.aplicada_em|date:"d/m/Y H:i" }}</span>
+    {% else %}
+      <span class="text-xs text-amber-600 ml-2">Nunca aplicada no router</span>
+    {% endif %}
+    {% if politica.descricao %}<div class="text-sm text-slate-500">{{ politica.descricao }}</div>{% endif %}
+  </div>
+  <div class="flex-1"></div>
+
+  <form method="post" action="{% url 'mikrotik:politica_aplicar' eq.slug politica.pk %}" class="inline"
+        onsubmit="return confirm('Aplicar política no router? Vai apagar entradas antigas e recriar.');">
+    {% csrf_token %}
+    <button class="btn-primary text-sm" {% if not regras or not politica.ativo %}disabled title="Política inativa ou sem domínios"{% endif %}>
+      {% icon "lucide:upload-cloud" "1em" %}<span>Aplicar no router</span>
+    </button>
+  </form>
+
+  <form method="post" action="{% url 'mikrotik:politica_remover_router' eq.slug politica.pk %}" class="inline"
+        onsubmit="return confirm('Remover entradas dessa política do router? (Política fica no banco.)');">
+    {% csrf_token %}
+    <button class="btn-secondary text-sm">
+      {% icon "lucide:eraser" "1em" %}<span>Remover do router</span>
+    </button>
+  </form>
+
+  <form method="post" action="{% url 'mikrotik:politica_delete' eq.slug politica.pk %}" class="inline"
+        onsubmit="return confirm('Apagar política PERMANENTEMENTE? Remove do banco e do router.');">
+    {% csrf_token %}
+    <button class="btn-ghost text-sm text-red-600">
+      {% icon "lucide:trash-2" "1em" %}<span>Apagar</span>
+    </button>
+  </form>
+</div>
+
+{% if politica.aplicada_erro %}
+<div class="bg-red-50 border border-red-200 text-red-800 text-sm rounded p-3 mb-4">
+  <strong>Erro na última aplicação:</strong> {{ politica.aplicada_erro }}
+</div>
+{% endif %}
+
+<div class="grid md:grid-cols-2 gap-4">
+
+  <!-- Domínios bloqueados -->
+  <div class="card">
+    <header class="card-header">
+      <h3 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:globe-2" "1em" "text-red-500" %}<span>Domínios bloqueados</span>
+      </h3>
+      <span class="text-xs text-slate-500">{{ regras|length }}</span>
+    </header>
+
+    <form method="post" action="{% url 'mikrotik:politica_add_dominio' eq.slug politica.pk %}" class="p-4 border-b border-slate-200 space-y-2">
+      {% csrf_token %}
+      <div class="flex gap-2">
+        {{ regra_form.dominio }}
+        <button class="btn-primary text-sm whitespace-nowrap">
+          {% icon "lucide:plus" "1em" %}<span>Adicionar</span>
+        </button>
+      </div>
+      <label class="flex items-center gap-2 text-xs">
+        {{ regra_form.incluir_subdominios }}
+        <span>Incluir subdomínios (*.dominio.com)</span>
+      </label>
+    </form>
+
+    {% if not regras %}
+      <div class="p-4 text-xs text-slate-500 text-center">Nenhum domínio ainda.</div>
+    {% else %}
+      <ul class="divide-y divide-slate-200">
+        {% for r in regras %}
+        <li class="flex items-center gap-2 px-4 py-2 text-sm">
+          <span class="font-mono">{{ r.dominio }}</span>
+          {% if r.incluir_subdominios %}<span class="text-[10px] text-slate-500">+ subdomínios</span>{% endif %}
+          {% if r.comentario %}<span class="text-xs text-slate-500 italic">— {{ r.comentario }}</span>{% endif %}
+          <span class="flex-1"></span>
+          <form method="post" action="{% url 'mikrotik:politica_del_dominio' eq.slug politica.pk r.pk %}" class="inline">
+            {% csrf_token %}
+            <button class="btn-ghost !p-1 text-red-500 text-xs" title="Remover">
+              {% icon "lucide:x" "0.9em" %}
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  <!-- Devices alvo -->
+  <div class="card">
+    <header class="card-header">
+      <h3 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:target" "1em" "text-indigo-500" %}<span>Dispositivos alvo</span>
+      </h3>
+      <span class="text-xs text-slate-500">{{ alvos|length }}</span>
+    </header>
+
+    <form method="post" action="{% url 'mikrotik:politica_add_alvo' eq.slug politica.pk %}" class="p-4 border-b border-slate-200">
+      {% csrf_token %}
+      <div class="flex gap-2">
+        {{ alvo_form.device }}
+        <button class="btn-primary text-sm whitespace-nowrap">
+          {% icon "lucide:plus" "1em" %}<span>Adicionar</span>
+        </button>
+      </div>
+    </form>
+
+    {% if not alvos %}
+      <div class="p-4 text-xs text-slate-500 text-center">
+        Sem alvos: política só usa DNS sinkhole (afeta todos os clientes do hEX).
+        Adicione devices pra também aplicar firewall TLS-SNI por src-mac.
+      </div>
+    {% else %}
+      <ul class="divide-y divide-slate-200">
+        {% for a in alvos %}
+        <li class="flex items-center gap-2 px-4 py-2 text-sm">
+          <span>{{ a.device.nome }}</span>
+          <span class="font-mono text-xs text-slate-500">{{ a.device.mac_address }}</span>
+          {% if a.device.ip_address %}<span class="text-xs text-slate-500">{{ a.device.ip_address }}</span>{% endif %}
+          <span class="flex-1"></span>
+          <form method="post" action="{% url 'mikrotik:politica_del_alvo' eq.slug politica.pk a.pk %}" class="inline">
+            {% csrf_token %}
+            <button class="btn-ghost !p-1 text-red-500 text-xs" title="Remover alvo">
+              {% icon "lucide:x" "0.9em" %}
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

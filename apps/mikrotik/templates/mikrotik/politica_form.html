@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Nova política · {{ eq.nome }}{% endblock %}
+{% block page_title %}Nova política{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:list' %}" class="text-slate-500 hover:text-indigo-600">Mikrotik</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:detail' eq.slug %}" class="text-slate-500 hover:text-indigo-600">{{ eq.nome }}</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:politica_list' eq.slug %}" class="text-slate-500 hover:text-indigo-600">Políticas</a>
+  <span class="crumb-sep">/</span>
+  <span>Nova</span>
+{% endblock %}
+
+{% block content %}
+<div class="card max-w-2xl mx-auto">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:plus" "1.1em" "text-indigo-500" %}<span>Criar política de filtro</span>
+    </h2>
+  </header>
+  <form method="post" class="p-5 space-y-4">
+    {% csrf_token %}
+    <div>
+      <label class="label">Nome <span class="text-red-500">*</span></label>
+      {{ form.nome }}
+      {% if form.nome.errors %}<p class="text-xs text-red-600 mt-1">{{ form.nome.errors|join:", " }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="label">Descrição</label>
+      {{ form.descricao }}
+    </div>
+    <div class="flex items-center gap-2">
+      {{ form.ativo }}
+      <label for="{{ form.ativo.id_for_label }}" class="text-sm">Política ativa</label>
+    </div>
+    <div class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded p-3">
+      Após criar, você poderá adicionar domínios e dispositivos alvo na próxima tela,
+      e então aplicar a política no router.
+    </div>
+    <div class="flex justify-end gap-2 pt-2">
+      <a href="{% url 'mikrotik:politica_list' eq.slug %}" class="btn-ghost text-sm">Cancelar</a>
+      <button type="submit" class="btn-primary text-sm">
+        {% icon "lucide:save" "1em" %}<span>Criar política</span>
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

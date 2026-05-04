@@ -1,0 +1,89 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if is_create %}Novo dispositivo{% else %}Editar {{ device.nome }}{% endif %}{% endblock %}
+{% block page_title %}{% if is_create %}Novo dispositivo{% else %}Editar dispositivo{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:list' %}" class="text-slate-500 hover:text-indigo-600">Mikrotik</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:detail' eq.slug %}" class="text-slate-500 hover:text-indigo-600">{{ eq.nome }}</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:device_list' eq.slug %}" class="text-slate-500 hover:text-indigo-600">Devices</a>
+{% endblock %}
+
+{% block content %}
+<section class="card max-w-3xl">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:laptop" "1.1em" "text-indigo-500" %}
+      <span>{% if is_create %}Cadastrar dispositivo{% else %}Editar {{ device.nome }}{% endif %}</span>
+    </h2>
+    <span class="text-xs text-slate-500">Em {{ eq.nome }}</span>
+  </header>
+  <form method="post" class="card-body grid sm:grid-cols-2 gap-4">
+    {% csrf_token %}
+
+    <div class="sm:col-span-2">
+      <label class="label">{{ form.nome.label }}</label>
+      {{ form.nome }}
+      {% if form.nome.errors %}<p class="text-xs text-red-600 mt-1">{{ form.nome.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="label">{{ form.tipo.label }}</label>
+      {{ form.tipo }}
+    </div>
+
+    <div>
+      <label class="label">{{ form.status.label }}</label>
+      {{ form.status }}
+    </div>
+
+    <div>
+      <label class="label">MAC Address</label>
+      {{ form.mac_address }}
+      {% if form.mac_address.errors %}<p class="text-xs text-red-600 mt-1">{{ form.mac_address.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="label">IP fixo</label>
+      {{ form.ip_address }}
+      <p class="help">Vai virar static DHCP lease no router.</p>
+      {% if form.ip_address.errors %}<p class="text-xs text-red-600 mt-1">{{ form.ip_address.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="label">Hostname</label>
+      {{ form.hostname }}
+    </div>
+
+    <div>
+      <label class="label">Responsável</label>
+      {{ form.responsavel }}
+    </div>
+
+    <div>
+      <label class="label">Secretaria</label>
+      {{ form.secretaria }}
+    </div>
+
+    <div>
+      <label class="label">Setor</label>
+      {{ form.setor }}
+    </div>
+
+    <div class="sm:col-span-2">
+      <label class="label">Descrição</label>
+      {{ form.descricao }}
+    </div>
+
+    <div class="sm:col-span-2 flex gap-3 pt-3 border-t border-slate-100">
+      <button type="submit" class="btn-primary">
+        {% icon "lucide:save" "1em" %}<span>Salvar e sincronizar</span>
+      </button>
+      <a href="{% url 'mikrotik:device_list' eq.slug %}" class="btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

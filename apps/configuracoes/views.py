@@ -11,7 +11,7 @@ from .models import Setting
 
 
 class SettingListView(RoleRequiredMixin, ListView):
-    required_role = UserRole.GESTOR
+    required_role = UserRole.ADMIN
     template_name = "configuracoes/setting_list.html"
     context_object_name = "settings"
     paginate_by = 50

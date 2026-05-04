@@ -22,6 +22,10 @@ urlpatterns = [
         include(("apps.agentes.urls", "agentes"), namespace="agentes"),
     ),
     path(
+        "admin/mikrotik/",
+        include(("apps.mikrotik.urls", "mikrotik"), namespace="mikrotik"),
+    ),
+    path(
         "api/v1/agent/",
         include(("apps.agentes.api_urls", "agent_api"), namespace="agent_api"),
     ),

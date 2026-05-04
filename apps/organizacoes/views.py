@@ -1,13 +1,18 @@
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.shortcuts import redirect
-from django.urls import reverse_lazy
+from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
+from apps.core.models import Tenant
 from apps.core.permissions import UserRole
 from apps.core.views_mixins import RoleRequiredMixin
 
-from .forms import SecretariaForm, SetorForm
+from .forms import SecretariaForm, SetorForm, TenantForm
 from .models import Secretaria, Setor
 
 
@@ -122,3 +127,128 @@ class SetorDeleteView(RoleRequiredMixin, DeleteView):
     model = Setor
     template_name = "organizacoes/setor_confirm_delete.html"
     success_url = reverse_lazy("organizacoes:setor_list")
+
+
+# --- Tenants (Organizações) — admin global ---------------------------------
+
+
+class GlobalAdminRequiredMixin(LoginRequiredMixin):
+    """Apenas admins globais (suporte SABIO) podem gerenciar tenants."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not getattr(request.user, "is_global_admin", False):
+            raise PermissionDenied("Apenas administradores globais.")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class TenantListView(GlobalAdminRequiredMixin, ListView):
+    template_name = "organizacoes/tenant_list.html"
+    context_object_name = "tenants"
+
+    def get_queryset(self):
+        qs = Tenant.all_tenants.annotate(
+            users_count=Count("users", distinct=True),
+            agent_tokens_count=Count("agenttokens", distinct=True),
+            secretarias_count=Count("secretarias", distinct=True),
+        )
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(
+                Q(name__icontains=q)
+                | Q(code__icontains=q)
+                | Q(cnpj__icontains=q)
+                | Q(city__icontains=q)
+            )
+        return qs.order_by("name")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["q"] = self.request.GET.get("q", "")
+        active_id = self.request.session.get("admin_tenant_id")
+        ctx["active_tenant_id"] = active_id
+        ctx["active_tenant"] = (
+            Tenant.all_tenants.filter(pk=active_id).first() if active_id else None
+        )
+        ctx["just_created_id"] = self.request.session.pop("tenant_just_created", None)
+        return ctx
+
+
+class TenantCreateView(GlobalAdminRequiredMixin, CreateView):
+    model = Tenant
+    form_class = TenantForm
+    template_name = "organizacoes/tenant_form.html"
+    success_url = reverse_lazy("organizacoes:tenant_list")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        self.request.session["tenant_just_created"] = self.object.pk
+        messages.success(self.request, f"Organização '{self.object.name}' criada.")
+        return response
+
+
+class TenantUpdateView(GlobalAdminRequiredMixin, UpdateView):
+    model = Tenant
+    form_class = TenantForm
+    template_name = "organizacoes/tenant_form.html"
+    success_url = reverse_lazy("organizacoes:tenant_list")
+
+    def get_queryset(self):
+        return Tenant.all_tenants.all()
+
+    def form_valid(self, form):
+        messages.success(self.request, "Organização atualizada.")
+        return super().form_valid(form)
+
+
+class TenantToggleActiveView(GlobalAdminRequiredMixin, View):
+    def post(self, request, pk):
+        tenant = get_object_or_404(Tenant.all_tenants, pk=pk)
+        tenant.active = not tenant.active
+        tenant.save(update_fields=["active", "updated_at"])
+        messages.success(
+            request,
+            f"Organização '{tenant.name}' {'ativada' if tenant.active else 'desativada'}.",
+        )
+        return redirect("organizacoes:tenant_list")
+
+
+class TenantDeleteView(GlobalAdminRequiredMixin, View):
+    def post(self, request, pk):
+        tenant = (
+            Tenant.all_tenants.annotate(
+                users_count=Count("users", distinct=True),
+                agent_tokens_count=Count("agenttokens", distinct=True),
+            )
+            .filter(pk=pk)
+            .first()
+        )
+        if not tenant:
+            messages.error(request, "Organização não encontrada.")
+            return redirect("organizacoes:tenant_list")
+        if tenant.users_count or tenant.agent_tokens_count:
+            messages.error(
+                request,
+                "Não é possível excluir: existem usuários ou agentes vinculados.",
+            )
+            return redirect("organizacoes:tenant_list")
+        nome = tenant.name
+        tenant.delete()
+        messages.success(request, f"Organização '{nome}' excluída.")
+        return redirect("organizacoes:tenant_list")
+
+
+class TenantSelectView(GlobalAdminRequiredMixin, View):
+    """Define o tenant ativo na sessão (admin global)."""
+
+    def post(self, request, pk=None):
+        if pk:
+            tenant = get_object_or_404(Tenant.all_tenants, pk=pk)
+            request.session["admin_tenant_id"] = tenant.pk
+            messages.success(request, f"Filtrando por {tenant.name}.")
+        else:
+            request.session.pop("admin_tenant_id", None)
+            messages.info(request, "Filtro de organização removido.")
+        next_url = request.POST.get("next") or reverse("organizacoes:tenant_list")
+        return HttpResponseRedirect(next_url)

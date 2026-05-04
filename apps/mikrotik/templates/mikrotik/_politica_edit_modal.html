@@ -1,0 +1,29 @@
+{% load divsystem %}
+<div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+  <h3 class="font-semibold">Editar Política</h3>
+  <button @click="showEdit = false" class="text-slate-400 hover:text-slate-600">
+    {% icon "lucide:x" "1.2em" %}
+  </button>
+</div>
+<form method="post" action="{% url 'mikrotik:tenant_politica_edit' politica.pk %}" class="p-5 space-y-3">
+  {% csrf_token %}
+  <div>
+    <label class="label">Nome</label>
+    <input type="text" name="nome" required maxlength="120" value="{{ politica.nome }}" class="input">
+  </div>
+  <div>
+    <label class="label">Descrição</label>
+    <input type="text" name="descricao" maxlength="255" value="{{ politica.descricao }}" class="input">
+  </div>
+  <label class="flex items-start gap-2 text-sm cursor-pointer">
+    <input type="checkbox" name="is_global" {% if politica.is_global %}checked{% endif %} class="mt-0.5">
+    <span>
+      <span class="font-medium">Política Global</span>
+      <span class="block text-xs text-slate-500">DNS sinkhole pra todos os clientes do hEX (sem firewall por device)</span>
+    </span>
+  </label>
+  <div class="flex justify-end gap-2 pt-2">
+    <button type="button" @click="showEdit = false" class="btn-ghost text-sm">Cancelar</button>
+    <button type="submit" class="btn-primary text-sm">Salvar</button>
+  </div>
+</form>

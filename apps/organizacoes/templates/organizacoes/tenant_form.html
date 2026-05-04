@@ -1,0 +1,85 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nova{% endif %} organização{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Editar Organização{% else %}Nova Organização{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post" class="card max-w-4xl">
+  {% csrf_token %}
+  <div class="card-body space-y-5">
+    {% if form.non_field_errors %}
+      <div class="flash flash-error">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    <div>
+      <label class="label">Nome da organização</label>
+      {{ form.name }}
+      {% if form.name.errors %}<p class="form-error">{{ form.name.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="label">Slug (subdomínio)</label>
+      {{ form.slug }}
+      <p class="help">Subdomínio de acesso: <code class="font-mono text-indigo-600">slug.divsystem.com.br</code> (auto-gerado se vazio)</p>
+      {% if form.slug.errors %}<p class="form-error">{{ form.slug.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div>
+        <label class="label">Código do agente</label>
+        {{ form.external_code }}
+        <p class="help">Usado na instalação do agente</p>
+      </div>
+      <div>
+        <label class="label">CNPJ</label>
+        {{ form.cnpj }}
+      </div>
+      <div>
+        <label class="label">Telefone</label>
+        {{ form.phone }}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="label">Email</label>
+        {{ form.email }}
+      </div>
+      <div>
+        <label class="label">Responsável</label>
+        {{ form.contact_name }}
+      </div>
+    </div>
+
+    <div>
+      <label class="label">Endereço</label>
+      {{ form.address }}
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="sm:col-span-2">
+        <label class="label">Cidade</label>
+        {{ form.city }}
+      </div>
+      <div>
+        <label class="label">UF</label>
+        {{ form.state }}
+      </div>
+    </div>
+
+    {% if form.instance.pk %}
+    <label class="flex items-center gap-2 text-sm">
+      {{ form.active }} Organização ativa
+    </label>
+    {% endif %}
+  </div>
+
+  <div class="card-header bg-slate-50 justify-end">
+    <a href="{% url 'organizacoes:tenant_list' %}" class="btn-secondary">Cancelar</a>
+    <button class="btn-primary">
+      {% icon "lucide:save" "1em" %}
+      <span>{% if form.instance.pk %}Salvar{% else %}Criar Organização{% endif %}</span>
+    </button>
+  </div>
+</form>
+{% endblock %}

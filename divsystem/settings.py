@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.configuracoes",
     "apps.agentes",
     "apps.dashboard",
+    "apps.mikrotik",
 ]
 
 MIDDLEWARE = [
@@ -202,9 +203,43 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="contato@divsystem.com.br
 # Cloudflare R2
 R2_ACCOUNT_ID = env("CLOUDFLARE_R2_ACCOUNT_ID", default="")
 R2_BUCKET = env("CLOUDFLARE_R2_BUCKET", default="")
-R2_TOKEN = env("CLOUDFLARE_R2_TOKEN", default="")
+R2_TOKEN = env("CLOUDFLARE_R2_TOKEN", default="")  # API Token Cloudflare (cfut_*) — não usado por django-storages
 R2_PUBLIC_URL = env("CLOUDFLARE_R2_PUBLIC_URL", default="")
 R2_ENDPOINT = env("CLOUDFLARE_R2_ENDPOINT", default="")
+
+# Storage de mídia — escolhe na ordem:
+# 1) Custom CloudflareR2Storage (usa CLOUDFLARE_R2_TOKEN cfut_*) — preferido quando setado.
+# 2) S3Storage via boto3 (requer AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY) — alternativo.
+# 3) FileSystemStorage local — fallback default.
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")
+
+if R2_TOKEN and R2_ACCOUNT_ID and R2_BUCKET:
+    STORAGES["default"] = {
+        "BACKEND": "apps.core.storages.CloudflareR2Storage",
+        "OPTIONS": {
+            "location": "media",  # prefixa todos os objetos com "media/"
+        },
+    }
+elif AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and R2_ENDPOINT and R2_BUCKET:
+    _r2_custom_domain = (R2_PUBLIC_URL or "").replace("https://", "").replace("http://", "").rstrip("/") or None
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": R2_BUCKET,
+            "endpoint_url": R2_ENDPOINT,
+            "access_key": AWS_ACCESS_KEY_ID,
+            "secret_key": AWS_SECRET_ACCESS_KEY,
+            "region_name": "auto",
+            "signature_version": "s3v4",
+            "addressing_style": "virtual",
+            "default_acl": None,
+            "querystring_auth": not bool(_r2_custom_domain),
+            "custom_domain": _r2_custom_domain,
+            "file_overwrite": False,
+            "location": "media",
+        },
+    }
 
 AGENT_LATEST_VERSION = env("AGENT_LATEST_VERSION", default="5.2.0")
 AGENT_UPDATE_URL = env("AGENT_UPDATE_URL", default="")
@@ -235,3 +270,11 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# === Módulo Mikrotik / WireGuard hub ===
+WG_SUBNET = env("WG_SUBNET", default="10.10.10.0/24")
+WG_SERVER_IP = env("WG_SERVER_IP", default="10.10.10.1")
+WG_ENDPOINT_HOST = env("WG_ENDPOINT_HOST", default="178.105.4.179")
+WG_ENDPOINT_PORT = env.int("WG_ENDPOINT_PORT", default=51820)
+WG_SERVER_PUBKEY = env("WG_SERVER_PUBKEY", default="")
+WG_PEER_WRAPPER = env("WG_PEER_WRAPPER", default="/usr/local/sbin/divsystem-wg-peer")

@@ -28,23 +28,35 @@ from .serializers import (
 
 # --- Health -----------------------------------------------------------------
 
-@api_view(["GET"])
-@authentication_classes([])
-@permission_classes([AllowAny])
-def ping_public(request):
-    return Response({"status": "ok", "timestamp": timezone.now().isoformat()})
+@api_view(["GET", "POST"])
+@authentication_classes([AgentTokenAuthentication])
+@permission_classes([AllowAny])  # GET é público; POST exige Bearer (checado abaixo)
+def ping_endpoint(request):
+    """`/ping` único — GET é healthcheck público, POST é o tick do agente.
 
+    Mesma URL em ambos os métodos pra evitar o 405 silencioso que surgia
+    quando o agente C# postava `/ping` (sem barra final) e batia na rota
+    GET-only `ping_public`.
+    """
+    if request.method == "GET":
+        return Response({"status": "ok", "timestamp": timezone.now().isoformat()})
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def ping_authenticated(request):
-    agent: AgentToken = request.agent_token
+    # POST → exige token Bearer
+    agent = getattr(request, "agent_token", None)
+    if agent is None:
+        return Response({"error": "Bearer token requerido."}, status=status.HTTP_401_UNAUTHORIZED)
+
     agent.last_ping_at = timezone.now()
     new_version = (request.data or {}).get("agent_version")
     if new_version and new_version != agent.agent_version:
         agent.agent_version = new_version
     agent.save(update_fields=["last_ping_at", "agent_version", "updated_at"])
     return Response({"ok": True})
+
+
+# Aliases pra manter compatibilidade com referências por nome em outros lugares
+ping_public = ping_endpoint
+ping_authenticated = ping_endpoint
 
 
 # --- Heartbeat / Inventário -------------------------------------------------
@@ -334,3 +346,5 @@ def command_result(request):
 
     cmd.save()
     return Response({"ok": True, "id": cmd.id, "status": cmd.status})
+
+

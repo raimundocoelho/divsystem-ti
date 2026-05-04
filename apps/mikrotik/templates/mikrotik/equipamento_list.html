@@ -1,0 +1,69 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Mikrotik{% endblock %}
+{% block page_title %}Mikrotik{% endblock %}
+
+{% block content %}
+<div class="card">
+  <header class="card-header">
+    <div class="flex flex-1 items-center gap-3">
+      <form method="get" class="flex flex-1">
+        <input class="input max-w-xs" type="search" name="q" placeholder="Buscar por nome, MAC, serial..." value="{{ request.GET.q }}">
+      </form>
+      <span class="text-xs text-slate-400 hidden md:inline">Roteadores Mikrotik gerenciados via WireGuard.</span>
+    </div>
+    <a href="{% url 'mikrotik:create' %}" class="btn-primary">
+      {% icon "lucide:plus" "1.1em" %}<span>Novo equipamento</span>
+    </a>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nome / Modelo</th>
+          <th>Localização</th>
+          <th>WG IP</th>
+          <th>Última conexão</th>
+          <th>Status</th>
+          <th class="text-right">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for eq in equipamentos %}
+        <tr>
+          <td>
+            <a href="{% url 'mikrotik:detail' eq.slug %}" class="font-medium text-zinc-900 hover:text-blue-600 inline-flex items-center gap-2">
+              {% icon "lucide:router" "1.1em" "text-slate-400" %}{{ eq.nome }}
+            </a>
+            <p class="text-xs text-zinc-500 ml-6">{{ eq.get_modelo_display }}{% if eq.routeros_version %} · RouterOS {{ eq.routeros_version }}{% endif %}{% if eq.mac_address %} · {{ eq.mac_address }}{% endif %}</p>
+          </td>
+          <td class="text-zinc-600 text-sm">
+            {{ eq.secretaria.nome|default:"—" }}
+            {% if eq.setor %}<br><span class="text-xs text-slate-500">{{ eq.setor.nome }}</span>{% endif %}
+          </td>
+          <td class="font-mono text-zinc-600 text-sm">{{ eq.wg_ip|default:"—" }}</td>
+          <td class="text-zinc-500 text-xs">
+            {{ eq.last_seen_at|date:"d/m H:i"|default:"—" }}
+            {% if eq.last_seen_at %}<br><span class="text-slate-400">{{ eq.last_seen_at|timesince }} atrás</span>{% endif %}
+          </td>
+          <td>
+            <span class="pill pill-{{ eq.status }}">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
+              {{ eq.get_status_display }}
+            </span>
+          </td>
+          <td class="text-right space-x-1">
+            <a href="{% url 'mikrotik:detail' eq.slug %}" class="btn-secondary !py-1 !px-2 text-xs">Detalhes</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-zinc-400 py-10">
+          {% icon "lucide:router" "2em" "text-slate-300 inline-block" %}<br>
+          <span class="text-sm">Nenhum equipamento cadastrado ainda.</span>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

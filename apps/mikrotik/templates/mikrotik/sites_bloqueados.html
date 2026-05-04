@@ -1,0 +1,79 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Sites Bloqueados{% endblock %}
+{% block page_title %}Sites Bloqueados{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <span>Sites Bloqueados</span>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-3">
+
+  <p class="text-sm text-slate-500">Lista agregada de domínios bloqueados em todas as políticas do tenant.</p>
+
+  <form method="get" class="flex flex-wrap items-end gap-2">
+    <div class="flex-1 min-w-64">
+      <label class="label">Buscar domínio</label>
+      <input type="text" name="q" value="{{ busca }}" placeholder="ex: facebook" class="input text-sm">
+    </div>
+    <div>
+      <label class="label">Categoria</label>
+      <select name="cat" class="input text-sm">
+        <option value="">Todas</option>
+        {% for c in categorias %}
+          <option value="{{ c.slug }}" {% if cat_filtro == c.slug %}selected{% endif %}>{{ c.label }}</option>
+        {% endfor %}
+        <option value="" {% if cat_filtro == "" and busca %}{% endif %}></option>
+      </select>
+    </div>
+    <button class="btn-secondary text-sm">Filtrar</button>
+    {% if busca or cat_filtro %}
+      <a href="{% url 'mikrotik:tenant_sites_bloqueados' %}" class="btn-ghost text-sm">Limpar</a>
+    {% endif %}
+  </form>
+
+  <div class="card">
+    <header class="card-header">
+      <h2 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:shield-off" "1.1em" "text-red-500" %}<span>Domínios bloqueados</span>
+      </h2>
+      <span class="text-xs text-slate-500">{{ total }} regra{{ total|pluralize:"s" }} {% if regras|length < total %}(mostrando {{ regras|length }}){% endif %}</span>
+    </header>
+
+    {% if not regras %}
+      <div class="p-8 text-sm text-slate-500 text-center">Nada encontrado.</div>
+    {% else %}
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Domínio</th>
+            <th>Categoria</th>
+            <th>Política</th>
+            <th>Equipamento</th>
+            <th>Subdomínios</th>
+            <th>Adicionada</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in regras %}
+          <tr>
+            <td class="font-mono text-xs">{{ r.dominio }}</td>
+            <td class="text-xs">
+              {% if r.categoria %}<span class="pill pill-bloqueado">{{ categorias_labels|get_item:r.categoria|default:r.categoria }}</span>{% else %}<span class="text-slate-400">individual</span>{% endif %}
+            </td>
+            <td class="text-xs">{{ r.politica.nome }}</td>
+            <td class="text-xs font-mono text-slate-500">{{ r.politica.equipamento.slug }}</td>
+            <td class="text-xs">{% if r.incluir_subdominios %}✓{% endif %}</td>
+            <td class="text-xs text-slate-500">{{ r.created_at|date:"d/m H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

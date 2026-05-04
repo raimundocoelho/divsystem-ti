@@ -1,0 +1,308 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{{ eq.nome }}{% endblock %}
+{% block page_title %}{{ eq.nome }}{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:list' %}" class="text-slate-500 hover:text-indigo-600">Mikrotik</a>
+{% endblock %}
+
+{% block content %}
+{# ─────────── Header com identidade + status + ações rápidas ─────────── #}
+<div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+  <div>
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">{{ eq.nome }}</h1>
+      <span class="pill pill-{{ eq.status }}">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
+        {{ eq.get_status_display }}
+      </span>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-slate-500 mt-1 font-mono">
+      <span>{{ eq.get_modelo_display }}</span>
+      {% if eq.routeros_version %}
+        <span class="text-slate-300">·</span>
+        <span>RouterOS {{ eq.routeros_version }}</span>
+      {% endif %}
+      {% if eq.wg_ip %}
+        <span class="text-slate-300">·</span>
+        <span>{{ eq.wg_ip }}</span>
+      {% endif %}
+      {% if eq.last_seen_at %}
+        <span class="text-slate-300">·</span>
+        <span>visto {{ eq.last_seen_at|date:"d/m H:i" }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <button type="button" onclick="window.location.reload()" class="btn-ghost text-xs" title="Recarregar página">
+      {% icon "lucide:refresh-cw" "0.9em" "text-slate-500" %}<span>Atualizar</span>
+    </button>
+    {% if eq.wg_ip %}
+    <form method="post" action="{% url 'mikrotik:ping' eq.slug %}" class="inline">
+      {% csrf_token %}
+      <button class="btn-secondary text-xs" title="Verifica REST API via WG">
+        {% icon "lucide:activity" "0.9em" %}<span>Testar conexão</span>
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{# ─────────── KPI cards ─────────── #}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:router" "1em" "text-indigo-500" %}<span>Modelo</span>
+    </div>
+    <div class="text-base font-semibold leading-tight truncate" title="{{ eq.get_modelo_display }}">{{ eq.get_modelo_display }}</div>
+    <div class="text-xs text-slate-500 mt-1 font-mono truncate">{{ eq.serial_number|default:"sem serial" }}</div>
+  </div>
+
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:cpu" "1em" "text-emerald-500" %}<span>RouterOS</span>
+    </div>
+    <div class="text-base font-semibold leading-tight font-mono">{{ eq.routeros_version|default:"—" }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ eq.mac_address|default:"sem MAC" }}</div>
+  </div>
+
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:cable" "1em" "text-amber-500" %}<span>IP do túnel</span>
+    </div>
+    <div class="text-base font-semibold leading-tight font-mono">{{ eq.wg_ip|default:"—" }}</div>
+    <div class="text-xs text-slate-500 mt-1 font-mono truncate" title="{{ eq.wg_endpoint_host }}:{{ eq.wg_endpoint_port }}">
+      {{ eq.wg_endpoint_host }}:{{ eq.wg_endpoint_port }}
+    </div>
+  </div>
+
+  <div class="card p-4">
+    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      {% icon "lucide:wifi" "1em" "text-sky-500" %}<span>Conexão</span>
+    </div>
+    <div class="text-base font-semibold leading-tight">
+      {{ eq.last_seen_at|date:"d/m H:i"|default:"nunca" }}
+    </div>
+    <div class="text-xs text-slate-500 mt-1">
+      {% if eq.last_seen_at %}{{ eq.last_seen_at|timesince }} atrás{% else %}aguardando{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if eq.last_error %}
+<div class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 mb-4 flex items-start gap-2">
+  {% icon "lucide:alert-triangle" "1.1em" "text-red-500 mt-0.5" %}
+  <div>
+    <p class="font-semibold mb-0.5">Último erro</p>
+    <p class="text-xs font-mono break-all">{{ eq.last_error }}</p>
+  </div>
+</div>
+{% endif %}
+
+{# ─────────── Identificação + ações ─────────── #}
+<div class="grid lg:grid-cols-3 gap-4">
+
+  <section class="card lg:col-span-2 self-start">
+    <header class="card-header">
+      <h2 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:id-card" "1.1em" "text-indigo-500" %}<span>Identificação</span>
+      </h2>
+      <span class="text-xs text-slate-500">{{ eq.tenant.name }}</span>
+    </header>
+    <dl class="card-body grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Secretaria</dt><dd>{{ eq.secretaria.nome|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Setor</dt><dd>{{ eq.setor.nome|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3 sm:col-span-2"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Endereço</dt><dd>{{ eq.endereco|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">MAC</dt><dd class="font-mono">{{ eq.mac_address|default:"—" }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Serial</dt><dd class="font-mono">{{ eq.serial_number|default:"—" }}</dd></div>
+      {% if eq.descricao %}
+      <div class="flex items-baseline gap-3 sm:col-span-2"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Descrição</dt><dd class="text-slate-600">{{ eq.descricao }}</dd></div>
+      {% endif %}
+    </dl>
+  </section>
+
+  <section class="card self-start">
+    <header class="card-header">
+      <h2 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:zap" "1.1em" "text-indigo-500" %}<span>Ações</span>
+      </h2>
+    </header>
+    <div class="card-body space-y-2">
+      {% if not eq.wg_ip %}
+        <form method="post" action="{% url 'mikrotik:provisionar' eq.slug %}">
+          {% csrf_token %}
+          <button class="btn-primary w-full justify-center">
+            {% icon "lucide:zap" "1em" %}<span>Provisionar (gerar chaves WG)</span>
+          </button>
+        </form>
+        <p class="help">Cria peer no hub e atribui IP do túnel.</p>
+      {% else %}
+        <a href="{% url 'mikrotik:device_list' eq.slug %}" class="btn-secondary w-full justify-center">
+          {% icon "lucide:laptop" "1em" %}<span>Dispositivos da rede</span>
+        </a>
+        <a href="{% url 'mikrotik:rogue_list' eq.slug %}" class="btn-secondary w-full justify-center">
+          {% icon "lucide:shield-alert" "1em" "text-amber-500" %}<span>Desconhecidos</span>
+        </a>
+        <a href="{% url 'mikrotik:script' eq.slug %}" class="btn-ghost w-full justify-center text-xs">
+          {% icon "lucide:download" "0.9em" %}<span>Baixar script .rsc</span>
+        </a>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+{% if eq.wg_ip %}
+{# ─────────── WireGuard + API REST ─────────── #}
+<div class="grid lg:grid-cols-3 gap-4 mt-4">
+  <section class="card lg:col-span-2 self-start">
+    <header class="card-header">
+      <h2 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:cable" "1.1em" "text-emerald-500" %}<span>WireGuard</span>
+      </h2>
+      <span class="text-xs text-slate-500">peer #{{ eq.pk }} no hub</span>
+    </header>
+    <dl class="card-body grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">IP do túnel</dt><dd class="font-mono">{{ eq.wg_ip }}/24</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Endpoint</dt><dd class="font-mono text-xs">{{ eq.wg_endpoint_host }}:{{ eq.wg_endpoint_port }}</dd></div>
+
+      <div class="flex items-baseline gap-3 sm:col-span-2" x-data="{ copied:false }">
+        <dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Pubkey device</dt>
+        <dd class="flex-1 flex items-center gap-2">
+          <span class="font-mono break-all text-xs flex-1">{{ eq.wg_pubkey_device }}</span>
+          <button type="button"
+                  @click="navigator.clipboard.writeText('{{ eq.wg_pubkey_device }}'); copied = true; setTimeout(()=>copied=false, 1500);"
+                  class="btn-ghost text-xs" title="Copiar">
+            <span x-show="!copied">{% icon "lucide:copy" "0.9em" %}</span>
+            <span x-show="copied" x-cloak class="text-emerald-600">{% icon "lucide:check" "0.9em" %}</span>
+          </button>
+        </dd>
+      </div>
+
+      <div class="flex items-baseline gap-3 sm:col-span-2" x-data="{ shown:false, copied:false }">
+        <dt class="text-slate-500 w-24 shrink-0 text-xs uppercase tracking-wider">Privkey device</dt>
+        <dd class="flex-1 flex items-center gap-2">
+          <span class="font-mono break-all text-xs flex-1" x-text="shown ? '{{ eq.wg_privkey_device }}' : '••••••••••••••••••••••••••••••••••••••••••••'"></span>
+          <button type="button" @click="shown = !shown" class="btn-ghost text-xs" :title="shown ? 'Ocultar' : 'Mostrar'">
+            <span x-show="!shown">{% icon "lucide:eye" "0.9em" %}</span>
+            <span x-show="shown" x-cloak>{% icon "lucide:eye-off" "0.9em" %}</span>
+          </button>
+          <button type="button"
+                  @click="navigator.clipboard.writeText('{{ eq.wg_privkey_device }}'); copied = true; setTimeout(()=>copied=false, 1500);"
+                  class="btn-ghost text-xs" title="Copiar">
+            <span x-show="!copied">{% icon "lucide:copy" "0.9em" %}</span>
+            <span x-show="copied" x-cloak class="text-emerald-600">{% icon "lucide:check" "0.9em" %}</span>
+          </button>
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="card self-start">
+    <header class="card-header">
+      <h2 class="font-semibold flex items-center gap-2">
+        {% icon "lucide:key-round" "1.1em" "text-amber-500" %}<span>API REST</span>
+      </h2>
+    </header>
+    <dl class="card-body space-y-3 text-sm">
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">Endpoint</dt><dd class="font-mono text-xs break-all">{{ eq.api_base_url }}</dd></div>
+      <div class="flex items-baseline gap-3"><dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">Usuário</dt><dd class="font-mono">{{ eq.api_user }}</dd></div>
+
+      <div class="flex items-baseline gap-3" x-data="{ shown:false, copied:false }">
+        <dt class="text-slate-500 w-20 shrink-0 text-xs uppercase tracking-wider">Senha</dt>
+        <dd class="flex-1 flex items-center gap-2">
+          <span class="font-mono break-all text-xs flex-1" x-text="shown ? '{{ eq.api_password }}' : '••••••••••••••••••'"></span>
+          <button type="button" @click="shown = !shown" class="btn-ghost text-xs" :title="shown ? 'Ocultar' : 'Mostrar'">
+            <span x-show="!shown">{% icon "lucide:eye" "0.9em" %}</span>
+            <span x-show="shown" x-cloak>{% icon "lucide:eye-off" "0.9em" %}</span>
+          </button>
+          <button type="button"
+                  @click="navigator.clipboard.writeText('{{ eq.api_password }}'); copied = true; setTimeout(()=>copied=false, 1500);"
+                  class="btn-ghost text-xs" title="Copiar">
+            <span x-show="!copied">{% icon "lucide:copy" "0.9em" %}</span>
+            <span x-show="copied" x-cloak class="text-emerald-600">{% icon "lucide:check" "0.9em" %}</span>
+          </button>
+        </dd>
+      </div>
+    </dl>
+  </section>
+</div>
+
+{# ─────────── Enviar comando ─────────── #}
+<section class="card mt-4">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:terminal" "1.1em" "text-indigo-500" %}<span>Enviar comando</span>
+    </h2>
+    <span class="text-xs text-slate-500">REST API ou script RouterOS</span>
+  </header>
+  <form method="post" action="{% url 'mikrotik:enviar_comando' eq.slug %}" class="card-body grid md:grid-cols-3 gap-4">
+    {% csrf_token %}
+    <div class="md:col-span-1">
+      <label class="label">Tipo</label>
+      {{ cmd_form.tipo }}
+    </div>
+    <div class="md:col-span-2">
+      <label class="label">Path / Comando</label>
+      {{ cmd_form.path }}
+      <p class="help">{{ cmd_form.path.help_text }}</p>
+    </div>
+    <div class="md:col-span-3">
+      <label class="label">Payload (JSON)</label>
+      {{ cmd_form.payload }}
+      <p class="help">{{ cmd_form.payload.help_text }}</p>
+    </div>
+    <div class="md:col-span-3 flex justify-end">
+      <button class="btn-primary">
+        {% icon "lucide:send" "1em" %}<span>Executar</span>
+      </button>
+    </div>
+  </form>
+</section>
+
+{# ─────────── Histórico ─────────── #}
+<section class="card mt-4">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:history" "1.1em" "text-indigo-500" %}<span>Últimos comandos</span>
+    </h2>
+    <span class="text-xs text-slate-500">{{ comandos|length }} registro{{ comandos|length|pluralize:"s" }}</span>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Quando</th>
+          <th>Tipo</th>
+          <th>Path</th>
+          <th>Status</th>
+          <th class="text-right">ms</th>
+          <th>Resposta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in comandos %}
+        <tr>
+          <td class="text-xs text-zinc-500 whitespace-nowrap">{{ c.created_at|date:"d/m H:i:s" }}</td>
+          <td><span class="font-mono text-xs">{{ c.tipo }}</span></td>
+          <td class="font-mono text-xs">{{ c.path }}</td>
+          <td><span class="pill pill-{{ c.status }}">{{ c.get_status_display }}</span></td>
+          <td class="text-xs text-zinc-500 text-right">{{ c.duration_ms|default:"—" }}</td>
+          <td class="font-mono text-xs text-zinc-600 max-w-md truncate" title="{{ c.response_body|default:c.erro }}">
+            {{ c.response_body|default:c.erro|truncatechars:80 }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-zinc-400 py-10 text-sm">
+          {% icon "lucide:inbox" "1.5em" "text-slate-300 inline-block" %}<br>
+          Nenhum comando executado ainda. Use o painel acima.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}

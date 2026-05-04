@@ -182,26 +182,37 @@ class RemoteCommand(models.Model):
         FAILED = "failed", "Falhou"
         TIMEOUT = "timeout", "Tempo esgotado"
 
+    # Os marcados (v5) são reconhecidos pelo agente C# 5.2.3.
+    # Os "[legado]" existem por compat com gerações antigas; o agente atual
+    # devolve "comando desconhecido". Limpar quando todos migrarem.
     COMMANDS = {
-        "screenshot_now":   {"label": "Captura de Tela", "payload": [], "critical": False},
-        "usb_block":        {"label": "Bloquear USB", "payload": ["hardware_id"], "critical": False},
-        "usb_block_all":    {"label": "Bloquear todos USB", "payload": [], "critical": True},
-        "usb_unblock":      {"label": "Desbloquear USB", "payload": ["hardware_id"], "critical": False},
-        "usb_eject":        {"label": "Ejetar USB", "payload": ["drive_letter"], "critical": False},
-        "send_message":     {"label": "Enviar mensagem", "payload": ["title", "message", "type"], "critical": False},
-        "shutdown":         {"label": "Desligar", "payload": ["delay_seconds"], "critical": True},
-        "restart":          {"label": "Reiniciar", "payload": ["delay_seconds"], "critical": True},
+        # ─── reconhecidos pelo agente C# 5.2.3 ──────────────────────────
+        "notification":     {"label": "Notificação (popup)", "payload": ["title", "message"], "critical": False},
         "lock_screen":      {"label": "Bloquear tela", "payload": [], "critical": False},
-        "run_command":      {"label": "Executar comando", "payload": ["command", "args"], "critical": True},
-        "open_url":         {"label": "Abrir URL", "payload": ["url"], "critical": False},
-        "kill_process":     {"label": "Encerrar processo", "payload": ["process_name"], "critical": True},
-        "update_agent":     {"label": "Atualizar agente", "payload": [], "critical": False},
+        "shutdown":         {"label": "Desligar PC", "payload": ["delay_seconds"], "critical": True},
+        "restart_pc":       {"label": "Reiniciar PC", "payload": ["delay_seconds"], "critical": True},
+        "logoff":           {"label": "Logoff do usuário", "payload": [], "critical": False},
+        "kill_process":     {"label": "Encerrar processo", "payload": ["name"], "critical": True},
+        "run_command":      {"label": "Executar comando", "payload": ["command", "timeout_seconds"], "critical": True},
+        "rename_pc":        {"label": "Renomear PC", "payload": ["new_name"], "critical": True},
+        "restart_agent":    {"label": "Reiniciar serviço do agente", "payload": [], "critical": False},
+        "update_agent":     {"label": "Forçar update do agente", "payload": [], "critical": False},
         "apply_policies":   {"label": "Aplicar políticas", "payload": [], "critical": False},
-        "change_ip":        {"label": "Alterar IP", "payload": ["ip", "mask", "gateway", "dns1", "dns2", "dhcp"], "critical": True},
-        "rename_pc":        {"label": "Renomear PC", "payload": ["new_name", "restart"], "critical": True},
-        "set_wallpaper":    {"label": "Papel de parede", "payload": ["image_url"], "critical": False},
-        "deploy_agent":     {"label": "Instalar agente remoto", "payload": ["target_ip", "username", "password", "enroll_code", "server_url"], "critical": True},
-        "uninstall_agent":  {"label": "Desinstalar agente", "payload": [], "critical": True},
+        "block_input":      {"label": "Bloquear teclado/mouse", "payload": [], "critical": False},
+        "unblock_input":    {"label": "Desbloquear teclado/mouse", "payload": [], "critical": False},
+
+        # ─── compat antigos (agente C# 5.2.3 NÃO reconhece) ─────────────
+        "send_message":     {"label": "[legado] Enviar mensagem", "payload": ["title", "message", "type"], "critical": False},
+        "restart":          {"label": "[legado] Reiniciar", "payload": ["delay_seconds"], "critical": True},
+        "usb_block":        {"label": "[legado] Bloquear USB", "payload": ["hardware_id"], "critical": False},
+        "usb_block_all":    {"label": "[legado] Bloquear todos USB", "payload": [], "critical": True},
+        "usb_unblock":      {"label": "[legado] Desbloquear USB", "payload": ["hardware_id"], "critical": False},
+        "usb_eject":        {"label": "[legado] Ejetar USB", "payload": ["drive_letter"], "critical": False},
+        "open_url":         {"label": "[legado] Abrir URL", "payload": ["url"], "critical": False},
+        "change_ip":        {"label": "[legado] Alterar IP", "payload": ["ip", "mask", "gateway", "dns1", "dns2", "dhcp"], "critical": True},
+        "set_wallpaper":    {"label": "[legado] Papel de parede", "payload": ["image_url"], "critical": False},
+        "deploy_agent":     {"label": "[legado] Instalar agente remoto", "payload": ["target_ip", "username", "password", "enroll_code", "server_url"], "critical": True},
+        "uninstall_agent":  {"label": "[legado] Desinstalar agente", "payload": [], "critical": True},
     }
 
     tenant = models.ForeignKey(
@@ -273,3 +284,12 @@ class RemoteCommand(models.Model):
             status__in=[cls.Status.PENDING, cls.Status.SENT],
             created_at__lt=cutoff,
         ).update(status=cls.Status.TIMEOUT, completed_at=timezone.now())
+
+
+# Helper preservado apenas para que a migration histórica 0002_screenshot
+# (que referencia este símbolo) continue carregável. O model Screenshot
+# foi removido — esta função nunca é mais chamada em runtime.
+def _screenshot_upload_to(instance, filename: str) -> str:
+    return f"screenshots/_removed/{filename}"
+
+

@@ -5,8 +5,11 @@ from . import api_views
 app_name = "agent_api"
 
 urlpatterns = [
-    path("ping", api_views.ping_public, name="ping_public"),
-    path("ping/", api_views.ping_authenticated, name="ping_auth"),
+    # /ping responde GET (público, healthcheck) e POST Bearer (agente reporta versão).
+    # O agente C# 5.2.x bate POST /ping (sem barra). Manter os dois paths apontando
+    # para a MESMA view evita o 405 silencioso.
+    path("ping", api_views.ping_endpoint, name="ping"),
+    path("ping/", api_views.ping_endpoint, name="ping_slash"),
     path("heartbeat", api_views.heartbeat, name="heartbeat"),
     path("config", api_views.config_endpoint, name="config"),
     path("enroll", api_views.enroll, name="enroll"),

@@ -1,0 +1,36 @@
+{% load divsystem %}
+<div class="px-5 py-4 border-b border-slate-200">
+  <h3 class="font-semibold text-base">Atribuir devices: {{ politica.nome }}</h3>
+  <p class="text-xs text-slate-500">Selecione quais devices recebem firewall TLS-SNI por src-mac</p>
+</div>
+
+<div class="p-5">
+  {% if not devices %}
+    <div class="text-sm text-slate-500 text-center py-6">
+      Nenhum device cadastrado em <span class="font-mono">{{ politica.equipamento.slug }}</span>.
+    </div>
+  {% else %}
+  <ul class="rounded border border-slate-200 divide-y divide-slate-100 max-h-96 overflow-auto">
+    {% for d in devices %}
+    <li class="flex items-center gap-3 px-3 py-2 text-sm">
+      <form hx-post="{% url 'mikrotik:tenant_politica_toggle_alvo_htmx' politica.pk d.pk %}"
+            hx-target="#assign-modal-body" hx-swap="innerHTML">
+        {% csrf_token %}
+        <button type="submit" class="flex items-center gap-1 cursor-pointer">
+          {% if d.pk in alvo_ids %}
+            {% icon "lucide:check-square" "1.1em" "text-indigo-600" %}
+          {% else %}
+            {% icon "lucide:square" "1.1em" "text-slate-300" %}
+          {% endif %}
+        </button>
+      </form>
+      <div class="flex-1 min-w-0">
+        <div class="font-medium truncate">{{ d.nome }}</div>
+        <div class="text-[11px] text-slate-500 font-mono">{{ d.mac_address }} {% if d.ip_address %}· {{ d.ip_address }}{% endif %}</div>
+      </div>
+      <span class="text-[10px] text-slate-400">{{ d.get_tipo_display }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>

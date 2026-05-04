@@ -1,0 +1,104 @@
+{% load divsystem %}
+<div class="px-5 py-4 border-b border-slate-200 flex items-start gap-3">
+  <div class="flex-1 min-w-0">
+    <h3 class="font-semibold text-base">Regras: {{ politica.nome }}</h3>
+    <p class="text-xs text-slate-500">Configure categorias e domínios individuais</p>
+  </div>
+</div>
+
+<div class="p-5 space-y-5">
+  <!-- Categorias -->
+  <div>
+    <h4 class="text-sm font-semibold text-slate-700 mb-2">Categorias</h4>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+      {% for c in cards %}
+      <form method="post"
+            hx-post="{% url 'mikrotik:tenant_politica_toggle_categoria' politica.pk c.slug %}"
+            hx-target="#rules-modal-body" hx-swap="innerHTML">
+        {% csrf_token %}
+        <button type="submit"
+                class="w-full text-left rounded-lg border px-3 py-2.5 transition
+                       {% if c.ativa %}border-red-200 bg-red-50 hover:bg-red-100{% else %}border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40{% endif %}">
+          <div class="flex items-start gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-sm leading-tight {% if c.ativa %}text-red-800{% else %}text-slate-700{% endif %}">{{ c.label }}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">{{ c.count }} domínios</div>
+            </div>
+            <div class="shrink-0 mt-0.5">
+              {% if c.ativa %}
+                {% icon "lucide:shield-check" "1.05em" "text-red-500" %}
+              {% else %}
+                {% icon "lucide:shield" "1.05em" "text-slate-300" %}
+              {% endif %}
+            </div>
+          </div>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Regra Individual -->
+  <div>
+    <h4 class="text-sm font-semibold text-slate-700 mb-2">Regra Individual</h4>
+    <form hx-post="{% url 'mikrotik:tenant_politica_add_regra_htmx' politica.pk %}"
+          hx-target="#rules-modal-body" hx-swap="innerHTML"
+          class="flex gap-2">
+      {% csrf_token %}
+      <input type="text" name="dominio" placeholder="Ex: facebook.com" required
+             class="input flex-1 text-sm" autocomplete="off">
+      <select name="acao" class="input text-sm w-32" disabled title="Hoje só suportamos bloqueio">
+        <option>Bloquear</option>
+      </select>
+      <button type="submit" class="btn-primary text-sm whitespace-nowrap">
+        {% icon "lucide:plus" "0.9em" %}<span>Adicionar</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Regras ativas -->
+  <div>
+    <div class="flex items-center gap-3 mb-2">
+      <h4 class="text-sm font-semibold text-slate-700">Regras ativas <span class="text-slate-400 font-normal">({{ total_regras }})</span></h4>
+    </div>
+
+    <div class="relative mb-2">
+      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+        {% icon "lucide:search" "0.95em" %}
+      </div>
+      <form hx-get="{% url 'mikrotik:tenant_politica_rules_modal' politica.pk %}"
+            hx-target="#rules-modal-body" hx-swap="innerHTML"
+            hx-trigger="input delay:300ms from:find input[name=buscar]">
+        {% csrf_token %}
+        <input type="text" name="buscar" value="{{ busca }}" placeholder="Buscar domínio..."
+               class="input text-sm pl-9" autocomplete="off">
+      </form>
+    </div>
+
+    {% if not regras %}
+      <div class="rounded-lg border border-slate-200 p-6 text-center text-xs text-slate-500">
+        {% if busca %}Nenhum domínio bate com "{{ busca }}".{% else %}Nenhuma regra. Use as categorias acima ou adicione domínios individuais.{% endif %}
+      </div>
+    {% else %}
+      <ul class="rounded-lg border border-slate-200 divide-y divide-slate-100 max-h-72 overflow-auto bg-white">
+        {% for r in regras %}
+        <li class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50">
+          <span class="pill pill-bloqueado text-[10px] shrink-0">Bloqueado</span>
+          <span class="font-mono text-xs text-slate-700 truncate">{{ r.dominio }}</span>
+          {% if r.categoria %}
+            <span class="text-[11px] text-slate-400 shrink-0">({{ categorias_labels|get_item:r.categoria|default:r.categoria }})</span>
+          {% endif %}
+          <span class="flex-1"></span>
+          <button hx-post="{% url 'mikrotik:tenant_politica_del_regra_htmx' politica.pk r.pk %}"
+                  hx-target="#rules-modal-body" hx-swap="innerHTML"
+                  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                  class="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition shrink-0"
+                  title="Remover">
+            {% icon "lucide:x" "0.95em" %}
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>

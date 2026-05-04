@@ -1,0 +1,180 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Organizações{% endblock %}
+{% block page_title %}Gestão de Organizações{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data>
+  {# ── Header ───────────────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Organizações (Tenants)</h1>
+      <p class="mt-1 text-sm text-slate-500">Gerencie as organizações que utilizam o sistema</p>
+    </div>
+    <a href="{% url 'organizacoes:tenant_new' %}" class="btn-primary">
+      {% icon "lucide:plus" "1em" %}<span>Nova Organização</span>
+    </a>
+  </div>
+
+  {# ── Filtro ativo ─────────────────────────────────────────────────── #}
+  {% if active_tenant %}
+  <div class="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5">
+    {% icon "lucide:filter" "1.1em" "text-indigo-500" %}
+    <span class="text-sm text-indigo-700">
+      Filtrando dados por: <strong>{{ active_tenant.name }}</strong>
+      <span class="font-mono text-xs text-indigo-500">({{ active_tenant.code }})</span>
+    </span>
+    <form method="post" action="{% url 'organizacoes:tenant_select_clear' %}" class="ml-auto">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button class="btn-ghost text-xs">Limpar filtro</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {# ── Search ───────────────────────────────────────────────────────── #}
+  <form method="get" class="relative">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+      {% icon "lucide:search" "1em" %}
+    </span>
+    <input class="input pl-10" type="search" name="q" value="{{ q }}"
+           placeholder="Buscar por nome, código, CNPJ ou cidade..." />
+  </form>
+
+  {# ── Tabela ───────────────────────────────────────────────────────── #}
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Organização</th>
+            <th class="hidden sm:table-cell">Código</th>
+            <th class="hidden md:table-cell">Cidade/UF</th>
+            <th class="text-center">Agentes</th>
+            <th class="text-center hidden sm:table-cell">Usuários</th>
+            <th class="text-center hidden lg:table-cell">Secretarias</th>
+            <th>Status</th>
+            <th class="text-center">Instalar</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tenant in tenants %}
+          <tr>
+            <td>
+              <span class="font-semibold text-slate-800">{{ tenant.name }}</span>
+              <div class="text-[10px] text-indigo-500 font-mono">{{ tenant.slug }}</div>
+              {% if tenant.cnpj %}
+                <div class="text-xs text-slate-400">{{ tenant.cnpj }}</div>
+              {% endif %}
+            </td>
+            <td class="hidden sm:table-cell">
+              <span class="font-mono text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
+                {{ tenant.code }}
+              </span>
+            </td>
+            <td class="text-slate-500 hidden md:table-cell">
+              {{ tenant.city }}{% if tenant.state %}/{{ tenant.state }}{% endif %}
+            </td>
+            <td class="text-center">
+              <span class="inline-flex items-center gap-1 text-sm font-semibold {% if tenant.agent_tokens_count %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                {% icon "lucide:cpu" "1em" %}
+                {{ tenant.agent_tokens_count }}
+              </span>
+            </td>
+            <td class="text-center hidden sm:table-cell text-sm text-slate-600">{{ tenant.users_count }}</td>
+            <td class="text-center hidden lg:table-cell text-sm text-slate-600">{{ tenant.secretarias_count }}</td>
+            <td>
+              {% if tenant.active %}
+                <span class="pill pill-online">Ativo</span>
+              {% else %}
+                <span class="pill pill-zinc">Inativo</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% with installSlug=tenant.slug install_cmd="irm "|add:request.scheme|add:"://"|add:request.get_host|add:"/install/"|add:tenant.slug|add:" | iex" %}
+              <button
+                type="button"
+                x-data="{ copied: false }"
+                @click="navigator.clipboard.writeText('{{ install_cmd|escapejs }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                class="text-indigo-500 hover:text-indigo-700 transition"
+                :title="copied ? 'Copiado!' : 'Copiar comando de instalação'"
+              >
+                <span x-show="!copied">{% icon "lucide:copy" "1.1em" %}</span>
+                <span x-show="copied" x-cloak class="text-emerald-500">{% icon "lucide:check" "1.1em" %}</span>
+              </button>
+              {% endwith %}
+            </td>
+            <td class="text-right">
+              <div class="flex items-center justify-end gap-1">
+                {% if active_tenant_id != tenant.id %}
+                <form method="post" action="{% url 'organizacoes:tenant_select' tenant.pk %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.path }}">
+                  <button class="btn-ghost !p-1.5" title="Selecionar este tenant">
+                    {% icon "lucide:check-circle" "1em" "text-emerald-600" %}
+                  </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'organizacoes:tenant_edit' tenant.pk %}" class="btn-ghost !p-1.5" title="Editar">
+                  {% icon "lucide:pencil" "1em" "text-slate-500" %}
+                </a>
+                {% if not tenant.users_count and not tenant.agent_tokens_count %}
+                <form method="post" action="{% url 'organizacoes:tenant_delete' tenant.pk %}"
+                      onsubmit="return confirm('Excluir a organização {{ tenant.name|escapejs }}?');">
+                  {% csrf_token %}
+                  <button class="btn-ghost !p-1.5 hover:!bg-red-50" title="Excluir">
+                    {% icon "lucide:trash-2" "1em" "text-red-500" %}
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center py-12">
+              <div class="flex flex-col items-center gap-3">
+                {% icon "lucide:building-2" "3em" "text-slate-300" %}
+                <p class="text-sm text-slate-500">Nenhuma organização cadastrada</p>
+                <a href="{% url 'organizacoes:tenant_new' %}" class="btn-primary">
+                  {% icon "lucide:plus" "1em" %}<span>Criar primeira organização</span>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Como funciona ────────────────────────────────────────────────── #}
+  <div class="card p-5">
+    <h2 class="mb-3 text-sm font-semibold text-slate-700">Como funciona o Multi-Tenancy por Subdomínio</h2>
+    <div class="grid gap-3 sm:grid-cols-3 text-sm text-slate-600">
+      <div class="flex gap-3">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 font-bold">1</div>
+        <div>
+          <p class="font-medium text-slate-800">Crie a organização</p>
+          <p class="text-xs text-slate-500">Slug define o subdomínio automaticamente</p>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 font-bold">2</div>
+        <div>
+          <p class="font-medium text-slate-800">Acesso pelo subdomínio</p>
+          <p class="text-xs text-slate-500">Ex: divinesia.divsystem.com.br</p>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 font-bold">3</div>
+        <div>
+          <p class="font-medium text-slate-800">Isolamento total</p>
+          <p class="text-xs text-slate-500">Cada org vê apenas seus dados e usuários</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

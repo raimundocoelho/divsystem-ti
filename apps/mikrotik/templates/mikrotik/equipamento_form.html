@@ -1,0 +1,70 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Novo equipamento{% endblock %}
+{% block page_title %}Novo equipamento Mikrotik{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:list' %}" class="text-slate-500 hover:text-indigo-600">Mikrotik</a>
+{% endblock %}
+
+{% block content %}
+<section class="card max-w-3xl">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:plus-circle" "1.1em" "text-indigo-500" %}<span>Cadastrar equipamento</span>
+    </h2>
+    <span class="text-xs text-slate-500">Após salvar, provisione pra gerar chaves WG e o script de bootstrap.</span>
+  </header>
+  <form method="post" class="card-body grid sm:grid-cols-2 gap-4">
+    {% csrf_token %}
+    <div class="sm:col-span-2">
+      <label class="label">{{ form.nome.label }}</label>
+      {{ form.nome }}
+      {% if form.nome.errors %}<p class="text-xs text-red-600 mt-1">{{ form.nome.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div class="sm:col-span-2">
+      <label class="label">{{ form.descricao.label }}</label>
+      {{ form.descricao }}
+    </div>
+
+    <div>
+      <label class="label">{{ form.modelo.label }}</label>
+      {{ form.modelo }}
+    </div>
+
+    <div>
+      <label class="label">{{ form.serial_number.label }}</label>
+      {{ form.serial_number }}
+    </div>
+
+    <div>
+      <label class="label">{{ form.mac_address.label }}</label>
+      {{ form.mac_address }}
+    </div>
+
+    <div>
+      <label class="label">{{ form.endereco.label }}</label>
+      {{ form.endereco }}
+    </div>
+
+    <div>
+      <label class="label">{{ form.secretaria.label }}</label>
+      {{ form.secretaria }}
+    </div>
+
+    <div>
+      <label class="label">{{ form.setor.label }}</label>
+      {{ form.setor }}
+    </div>
+
+    <div class="sm:col-span-2 flex gap-3 pt-3 border-t border-slate-100">
+      <button type="submit" class="btn-primary">
+        {% icon "lucide:save" "1em" %}<span>Salvar</span>
+      </button>
+      <a href="{% url 'mikrotik:list' %}" class="btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

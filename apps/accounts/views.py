@@ -81,7 +81,7 @@ def perfil(request):
 # --- CRUD de usuários (admin do tenant) -------------------------------------
 
 class UsuarioListView(RoleRequiredMixin, ListView):
-    required_role = UserRole.GESTOR
+    required_role = UserRole.ADMIN
     template_name = "accounts/usuario_list.html"
     context_object_name = "usuarios"
     paginate_by = 25
@@ -112,7 +112,7 @@ class UsuarioListView(RoleRequiredMixin, ListView):
 
 
 class UsuarioCreateView(RoleRequiredMixin, CreateView):
-    required_role = UserRole.GESTOR
+    required_role = UserRole.ADMIN
     model = User
     form_class = UserAdminForm
     template_name = "accounts/usuario_form.html"
@@ -142,7 +142,7 @@ class UsuarioCreateView(RoleRequiredMixin, CreateView):
 
 
 class UsuarioUpdateView(RoleRequiredMixin, UpdateView):
-    required_role = UserRole.GESTOR
+    required_role = UserRole.ADMIN
     model = User
     form_class = UserAdminForm
     template_name = "accounts/usuario_form.html"
@@ -165,7 +165,7 @@ class UsuarioUpdateView(RoleRequiredMixin, UpdateView):
 
 
 class UsuarioDeleteView(RoleRequiredMixin, DeleteView):
-    required_role = UserRole.GESTOR
+    required_role = UserRole.ADMIN
     model = User
     template_name = "accounts/usuario_confirm_delete.html"
     success_url = reverse_lazy("accounts:usuarios")
@@ -180,14 +180,14 @@ class UsuarioDeleteView(RoleRequiredMixin, DeleteView):
 # --- Tenant switcher (admin global) -----------------------------------------
 
 class SelecionarTenantView(LoginRequiredMixin, View):
-    """Permite ao admin global escolher em qual tenant operar."""
+    """POST-only: troca o tenant ativo do admin global pela sessão.
+
+    Chamado pelo dropdown do topbar. Não há tela própria — o GET redireciona
+    para o dashboard.
+    """
 
     def get(self, request):
-        if not request.user.is_global_admin:
-            messages.error(request, "Apenas administradores globais.")
-            return redirect("dashboard:home")
-        tenants = Tenant.all_tenants.order_by("name")
-        return render(request, "accounts/tenant_select.html", {"tenants": tenants})
+        return redirect("dashboard:home")
 
     def post(self, request):
         if not request.user.is_global_admin:

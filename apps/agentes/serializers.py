@@ -29,8 +29,11 @@ class EnrollSerializer(serializers.Serializer):
 class CommandResultSerializer(serializers.Serializer):
     command_id = serializers.IntegerField()
     status = serializers.ChoiceField(choices=["running", "success", "completed", "failed"])
-    output = serializers.CharField(required=False, allow_blank=True)
-    error = serializers.CharField(required=False, allow_blank=True)
+    # O agente C# 5.2.x sempre envia AMBOS os campos: em Ok(out), error=null; em
+    # Fail(err), output=null. Sem allow_null=True o DRF retorna 400 e o cmd
+    # nunca completa. allow_blank cobre o caso de string vazia.
+    output = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    error = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 class AgentTokenSerializer(serializers.ModelSerializer):

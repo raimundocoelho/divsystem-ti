@@ -1,0 +1,117 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Devices · {{ eq.nome }}{% endblock %}
+{% block page_title %}Dispositivos · {{ eq.nome }}{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:list' %}" class="text-slate-500 hover:text-indigo-600">Mikrotik</a>
+  <span class="crumb-sep">/</span>
+  <a href="{% url 'mikrotik:detail' eq.slug %}" class="text-slate-500 hover:text-indigo-600">{{ eq.nome }}</a>
+{% endblock %}
+
+{% block content %}
+{# Top bar — ações de discovery / sync ALL / link rogues #}
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <form method="post" action="{% url 'mikrotik:discovery' eq.slug %}" class="inline">
+    {% csrf_token %}
+    <button class="btn-secondary text-sm" title="Lê DHCP/ARP/bridge do router e atualiza presença/rogues">
+      {% icon "lucide:radar" "1em" %}<span>Rodar discovery</span>
+    </button>
+  </form>
+  <form method="post" action="{% url 'mikrotik:sync_all' eq.slug %}" class="inline"
+        onsubmit="return confirm('Empurrar leases estáticos pra todos os devices ativos?');">
+    {% csrf_token %}
+    <button class="btn-secondary text-sm">
+      {% icon "lucide:upload-cloud" "1em" %}<span>Sincronizar todos</span>
+    </button>
+  </form>
+  <a href="{% url 'mikrotik:politica_list' eq.slug %}" class="btn-secondary text-sm">
+    {% icon "lucide:filter" "1em" "text-indigo-500" %}
+    <span>Políticas</span>
+  </a>
+  <a href="{% url 'mikrotik:rogue_list' eq.slug %}" class="btn-secondary text-sm">
+    {% icon "lucide:shield-alert" "1em" "text-amber-500" %}
+    <span>Desconhecidos</span>
+    {% if rogue_count %}
+      <span class="ml-1 inline-flex items-center justify-center rounded-full bg-red-100 text-red-700 text-[10px] font-semibold px-1.5 py-0.5 min-w-[20px]">{{ rogue_count }}</span>
+    {% endif %}
+  </a>
+  <div class="flex-1"></div>
+  <a href="{% url 'mikrotik:device_create' eq.slug %}" class="btn-primary text-sm">
+    {% icon "lucide:plus" "1em" %}<span>Novo dispositivo</span>
+  </a>
+</div>
+
+<div class="card">
+  <header class="card-header">
+    <h2 class="font-semibold flex items-center gap-2">
+      {% icon "lucide:laptop" "1.1em" "text-indigo-500" %}<span>Dispositivos cadastrados</span>
+    </h2>
+    <span class="text-xs text-slate-500">{{ devices|length }} dispositivo{{ devices|length|pluralize:"s" }}</span>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nome / Hostname</th>
+          <th>Tipo</th>
+          <th>MAC</th>
+          <th>IP</th>
+          <th>Setor</th>
+          <th>Status</th>
+          <th>Última visto</th>
+          <th class="text-right">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in devices %}
+        <tr>
+          <td>
+            <a href="{% url 'mikrotik:device_edit' eq.slug d.pk %}" class="font-medium text-zinc-900 hover:text-indigo-600">{{ d.nome }}</a>
+            {% if d.hostname %}<p class="text-xs text-zinc-500">{{ d.hostname }}</p>{% endif %}
+          </td>
+          <td><span class="text-xs">{{ d.get_tipo_display }}</span></td>
+          <td class="font-mono text-xs">{{ d.mac_address }}</td>
+          <td class="font-mono text-xs">{{ d.ip_address|default:"—" }}</td>
+          <td class="text-xs text-zinc-600">
+            {% if d.setor %}{{ d.setor.nome }}
+            {% elif d.secretaria %}{{ d.secretaria.nome }}
+            {% else %}—{% endif %}
+          </td>
+          <td><span class="pill pill-{{ d.status }}">{{ d.get_status_display }}</span></td>
+          <td class="text-xs text-zinc-500">
+            {% if d.last_seen_at %}
+              {{ d.last_seen_at|date:"d/m H:i" }}
+              <br><span class="text-[10px] text-slate-400">{{ d.last_seen_at|timesince }} atrás</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-right space-x-1 whitespace-nowrap">
+            <form method="post" action="{% url 'mikrotik:device_sync' eq.slug d.pk %}" class="inline">
+              {% csrf_token %}
+              <button class="btn-ghost text-xs" title="Re-sincronizar lease">
+                {% icon "lucide:refresh-cw" "0.9em" %}
+              </button>
+            </form>
+            <a href="{% url 'mikrotik:device_edit' eq.slug d.pk %}" class="btn-secondary !py-1 !px-2 text-xs">Editar</a>
+            <form method="post" action="{% url 'mikrotik:device_delete' eq.slug d.pk %}" class="inline"
+                  onsubmit="return confirm('Excluir {{ d.nome|escapejs }}? Isso remove a static lease do router.');">
+              {% csrf_token %}
+              <button class="btn-ghost text-xs text-red-600" title="Excluir">
+                {% icon "lucide:trash-2" "0.9em" %}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-zinc-400 py-10">
+          {% icon "lucide:laptop" "2em" "text-slate-300 inline-block" %}<br>
+          <span class="text-sm">Nenhum dispositivo cadastrado.</span><br>
+          <span class="text-xs text-slate-400">Use "Rodar discovery" pra ver o que tem na rede.</span>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

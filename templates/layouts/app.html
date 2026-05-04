@@ -1,94 +1,171 @@
 {% extends "base.html" %}
-{% load divsystem %}
+{% load divsystem static %}
 
 {% block body %}
 <div class="min-h-full flex">
-  {# Sidebar #}
-  <aside class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-zinc-900 lg:text-zinc-100">
-    <div class="flex h-16 items-center gap-3 px-5 border-b border-zinc-800">
-      <span class="grid place-items-center h-9 w-9 rounded-lg bg-blue-500 text-white">
-        {% icon "lucide:cpu" "1.4em" %}
-      </span>
-      <div class="flex flex-col leading-tight">
-        <span class="font-semibold tracking-tight">{{ APP_NAME }}</span>
-        <span class="text-[11px] uppercase tracking-wider text-zinc-400">{{ APP_TAGLINE }}</span>
-      </div>
+  {# ─────────── Sidebar (light theme) ─────────── #}
+  <aside class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-white border-r border-slate-200">
+    <div class="flex h-20 items-center px-5 border-b border-slate-100">
+      <a href="{% url 'dashboard:home' %}" class="flex items-center gap-3">
+        <img src="{% static 'images/logo-sidebar-light.svg' %}" alt="{{ APP_NAME }}" class="h-12" />
+        <span class="sr-only">{{ APP_NAME }}</span>
+      </a>
     </div>
 
-    {% if current_tenant %}
-    <div class="px-5 py-3 border-b border-zinc-800">
-      <p class="text-[11px] uppercase tracking-wider text-zinc-500">Prefeitura</p>
-      <p class="font-medium text-zinc-100 truncate">{{ current_tenant.name }}</p>
-      <p class="text-xs text-zinc-400 font-mono">{{ current_tenant.code }}</p>
-    </div>
-    {% endif %}
-
-    <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+    <nav class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+      {# ── Principal ── #}
+      <p class="sidebar-section">Principal</p>
       <a href="{% url 'dashboard:home' %}" class="nav-link {% active_url '/' %}">
         {% icon "lucide:layout-dashboard" "1.1em" %}<span>Dashboard</span>
       </a>
 
-      <p class="px-3 mt-5 mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Administração</p>
+      {# ── Módulos ── #}
+      {% if user|has_role:"gestor" %}
+      <p class="sidebar-section">Módulos</p>
+      <a href="{% url 'agentes:list' %}" class="nav-link {% active_url '/admin/agentes' %}">
+        {% icon "lucide:cpu" "1.1em" %}<span>Agentes</span>
+      </a>
+      <a href="{% url 'mikrotik:list' %}" class="nav-link {% active_url '/admin/mikrotik' %}">
+        {% icon "lucide:router" "1.1em" %}<span>Mikrotik</span>
+      </a>
+
+      <p class="sidebar-section">Monitoramento</p>
+      <a href="{% url 'mikrotik:tenant_politica_list' %}" class="nav-link {% active_url '/admin/mikrotik/politicas' %}">
+        {% icon "lucide:shield" "1.1em" %}<span>Políticas de Sites</span>
+      </a>
+      <a href="{% url 'mikrotik:tenant_sites_bloqueados' %}" class="nav-link {% active_url '/admin/mikrotik/sites-bloqueados' %}">
+        {% icon "lucide:shield-off" "1.1em" %}<span>Sites Bloqueados</span>
+      </a>
+      {% endif %}
+
+      {# ── Administração ── #}
+      {% if user|has_role:"gestor" %}
+      <p class="sidebar-section">Administração</p>
+
+      {% if user|has_role:"admin" %}
+      <a href="{% url 'organizacoes:tenant_list' %}" class="nav-link {% active_url '/admin/organizacoes/tenants' %}">
+        {% icon "lucide:building-2" "1.1em" %}<span>Organizações</span>
+      </a>
+      {% endif %}
 
       <a href="{% url 'organizacoes:secretaria_list' %}" class="nav-link {% active_url '/admin/organizacoes/secretarias' %}">
-        {% icon "lucide:building-2" "1.1em" %}<span>Secretarias</span>
+        {% icon "lucide:landmark" "1.1em" %}<span>Secretarias</span>
       </a>
       <a href="{% url 'organizacoes:setor_list' %}" class="nav-link {% active_url '/admin/organizacoes/setores' %}">
         {% icon "lucide:layers" "1.1em" %}<span>Setores</span>
       </a>
+
+      {% if user|has_role:"admin" %}
       <a href="{% url 'accounts:usuarios' %}" class="nav-link {% active_url '/contas/usuarios' %}">
         {% icon "lucide:users" "1.1em" %}<span>Usuários</span>
       </a>
       <a href="{% url 'configuracoes:list' %}" class="nav-link {% active_url '/admin/configuracoes' %}">
         {% icon "lucide:settings" "1.1em" %}<span>Configurações</span>
       </a>
-
-      <p class="px-3 mt-5 mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Operação</p>
-
-      <a href="{% url 'agentes:list' %}" class="nav-link {% active_url '/admin/agentes' %}">
-        {% icon "lucide:shield" "1.1em" %}<span>Agentes</span>
-      </a>
+      {% endif %}
+      {% endif %}
     </nav>
 
-    <div class="px-3 py-4 border-t border-zinc-800">
-      {% if user.is_authenticated %}
-        <a href="{% url 'accounts:perfil' %}" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-zinc-800 transition">
-          <span class="grid place-items-center h-9 w-9 rounded-full bg-zinc-700 text-zinc-100 text-sm font-semibold">
-            {{ user|initials }}
-          </span>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium truncate">{{ user.name }}</p>
-            <p class="text-xs text-zinc-400 truncate">{{ user.email }}</p>
-          </div>
-        </a>
-        <form method="post" action="{% url 'accounts:logout' %}" class="mt-2">
-          {% csrf_token %}
-          <button class="w-full nav-link text-left">
-            {% icon "lucide:log-out" "1.05em" %}<span>Sair</span>
-          </button>
-        </form>
-      {% endif %}
+    <div class="px-3 py-3 border-t border-slate-100 text-[10px] font-semibold tracking-wider text-slate-400 uppercase text-center">
+      SABIO SYSTEM TECNOLOGIA LTDA
     </div>
   </aside>
 
-  {# Main #}
-  <div class="flex-1 lg:pl-64 flex flex-col">
-    <header class="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-zinc-200">
-      <div class="flex h-16 items-center justify-between gap-4 px-6">
-        <div class="flex items-center gap-3">
-          {% block header_left %}
-            <h1 class="text-lg font-semibold text-zinc-900">{% block page_title %}{% endblock %}</h1>
-            {% block breadcrumb %}{% endblock %}
-          {% endblock %}
+  {# ─────────── Main column ─────────── #}
+  <div class="flex-1 lg:pl-64 flex flex-col min-w-0">
+    <header class="px-6 pt-4">
+      <div class="topbar">
+        <div class="flex items-center gap-2.5 text-sm">
+          {% icon "lucide:home" "1.1em" "text-indigo-500" %}
+          <span class="crumb-sep">/</span>
+          <span class="crumb-current">{% block page_title %}Dashboard{% endblock %}</span>
+          {% block breadcrumb %}{% endblock %}
         </div>
-        <div class="flex items-center gap-3">
+
+        <div class="flex items-center gap-2">
           {% if user.is_authenticated %}
-            <span>{{ user|role_badge }}</span>
             {% if user.is_global_admin %}
-              <a href="{% url 'accounts:tenant_selecionar' %}" class="btn-ghost">
-                {% icon "lucide:globe" "1em" %}<span class="hidden sm:inline">Trocar prefeitura</span>
-              </a>
+              <div x-data="{open:false}" class="relative">
+                <button @click="open = !open" type="button"
+                        class="flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-medium transition
+                               {% if current_tenant %}bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200{% else %}text-slate-500 hover:bg-slate-100{% endif %}">
+                  {% icon "lucide:building" "1em" %}
+                  <span class="hidden sm:inline">
+                    {% if current_tenant %}{{ current_tenant.name }}{% else %}Sem organização selecionada{% endif %}
+                  </span>
+                  {% icon "lucide:chevron-down" "0.8em" "text-slate-400" %}
+                </button>
+
+                <div x-show="open" @click.outside="open = false" x-transition x-cloak
+                     class="absolute right-0 mt-2 w-72 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-slate-200 py-1 z-30">
+                  <div class="px-3 py-2 border-b border-slate-100">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Trocar Organização</p>
+                  </div>
+                  <form method="post" action="{% url 'accounts:tenant_selecionar' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <input type="hidden" name="tenant_id" value="">
+                    <button type="submit"
+                            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left
+                                   {% if not current_tenant %}text-indigo-600 font-semibold bg-indigo-50/60{% else %}text-slate-700 hover:bg-slate-50{% endif %}">
+                      {% icon "lucide:globe" "1em" %}<span>Sem filtro (ver tudo)</span>
+                    </button>
+                  </form>
+                  <div class="my-1 border-t border-slate-100"></div>
+                  <div class="max-h-72 overflow-y-auto">
+                    {% for t in available_tenants %}
+                      <form method="post" action="{% url 'accounts:tenant_selecionar' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <input type="hidden" name="tenant_id" value="{{ t.id }}">
+                        <button type="submit"
+                                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left
+                                       {% if current_tenant and current_tenant.id == t.id %}text-indigo-600 font-semibold bg-indigo-50/60{% else %}text-slate-700 hover:bg-slate-50{% endif %}">
+                          {% icon "lucide:building-2" "1em" "text-slate-400" %}
+                          <span class="flex-1 truncate">{{ t.name }}</span>
+                          <span class="font-mono text-[10px] text-slate-400">{{ t.code }}</span>
+                        </button>
+                      </form>
+                    {% empty %}
+                      <p class="px-3 py-3 text-xs text-slate-500">Nenhuma organização ativa.</p>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+              <span class="h-6 w-px bg-slate-200"></span>
             {% endif %}
+
+            <div x-data="{open:false}" class="relative">
+              <button @click="open = !open" type="button"
+                      class="flex items-center gap-2.5 rounded-xl px-2 py-1 text-sm transition hover:bg-slate-100">
+                <span class="avatar-gradient h-8 w-8 text-xs">{{ user|initials }}</span>
+                <div class="hidden sm:flex sm:flex-col sm:items-start leading-tight">
+                  <span class="text-sm font-semibold text-slate-700">{{ user.name|default:user.email }}</span>
+                  <span class="text-[11px] text-slate-500">{{ user.get_role_display|default:"Operador" }}</span>
+                </div>
+                {% icon "lucide:chevron-down" "0.9em" "text-slate-400" %}
+              </button>
+
+              <div x-show="open" @click.outside="open = false" x-transition x-cloak
+                   class="absolute right-0 mt-2 w-56 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-slate-200 py-1 z-30">
+                <div class="px-3 py-2 border-b border-slate-100">
+                  <p class="text-sm font-semibold text-slate-700 truncate">{{ user.name|default:user.email }}</p>
+                  <p class="text-xs text-slate-500 truncate">{{ user.email }}</p>
+                </div>
+                <a href="{% url 'accounts:perfil' %}"
+                   class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  {% icon "lucide:user-circle" "1em" "text-slate-400" %}<span>Meu perfil</span>
+                </a>
+                <div class="my-1 border-t border-slate-100"></div>
+                <form method="post" action="{% url 'accounts:logout' %}">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                    {% icon "lucide:log-out" "1em" %}<span>Sair</span>
+                  </button>
+                </form>
+              </div>
+            </div>
           {% endif %}
         </div>
       </div>
@@ -97,9 +174,11 @@
     {% if messages %}
       <div class="px-6 pt-4 space-y-2">
         {% for message in messages %}
-          <div class="flash flash-{{ message.tags|default:'info' }}" x-data="{open: true}" x-show="open">
+          <div class="flash flash-{{ message.tags|default:'info' }}" x-data="{open: true}" x-show="open" x-cloak>
             <span class="flex-1">{{ message }}</span>
-            <button @click="open = false" class="text-current/70 hover:text-current">{% icon "lucide:x" "1em" %}</button>
+            <button type="button" @click="open = false" class="text-current/70 hover:text-current">
+              {% icon "lucide:x" "1em" %}
+            </button>
           </div>
         {% endfor %}
       </div>
@@ -109,9 +188,11 @@
       {% block content %}{% endblock %}
     </main>
 
-    <footer class="px-6 py-4 text-xs text-zinc-400 border-t border-zinc-200">
+    <footer class="px-6 py-4 text-xs text-slate-400 border-t border-slate-200">
       © {% now "Y" %} SABIO SYSTEM TECNOLOGIA · INPI BR512026001444-1 · agente v{{ APP_VERSION_AGENTE }}
     </footer>
   </div>
 </div>
+
+<style>[x-cloak]{display:none!important}</style>
 {% endblock %}

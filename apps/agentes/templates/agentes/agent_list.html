@@ -7,7 +7,7 @@
 <div class="card">
   <header class="card-header">
     <form method="get" class="flex flex-1"><input class="input max-w-xs" type="search" name="q" placeholder="Buscar..." value="{{ request.GET.q }}"></form>
-    <a href="{% url 'agentes:new' %}" class="btn-primary">{% icon "lucide:plus" "1em" %}Cadastrar agente</a>
+    <span class="text-xs text-slate-400">Os agentes se registram automaticamente ao serem instalados nas máquinas.</span>
   </header>
   <div class="overflow-x-auto">
     <table class="table">
