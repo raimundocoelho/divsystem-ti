@@ -1,0 +1,44 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Run deploy script on EC2
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+              -o BatchMode=yes \
+              "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+              'sudo /usr/local/bin/deploy-divsystem.sh'
+
+      - name: Healthcheck
+        run: |
+          set -e
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' https://ti.divsystem.com.br/api/v1/agent/ping)
+            if [ "$code" = "200" ]; then
+              echo "Healthcheck OK ($code)"
+              exit 0
+            fi
+            echo "attempt $i: HTTP $code, retrying in 5s..."
+            sleep 5
+          done
+          echo "Healthcheck FAILED, last code: $code"
+          exit 1
