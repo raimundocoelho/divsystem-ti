@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
+from datetime import timedelta
 from django.utils import timezone
 from django.views.generic import DeleteView, DetailView, ListView, UpdateView, View
 
@@ -18,7 +19,22 @@ class AgenteListView(RoleRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
-        qs = AgentToken.objects.select_related("secretaria", "setor")
+        from django.db.models import Count, Q
+        # Contagem de heartbeats: total (lifetime) + ultimas 24h.
+        # Conditional aggregation roda numa unica query, sem N+1.
+        since_24h = timezone.now() - timedelta(hours=24)
+        qs = (
+            AgentToken.objects
+            .select_related("secretaria", "setor")
+            .annotate(
+                hb_total=Count("heartbeats", distinct=True),
+                hb_24h=Count(
+                    "heartbeats",
+                    filter=Q(heartbeats__created_at__gte=since_24h),
+                    distinct=True,
+                ),
+            )
+        )
         q = self.request.GET.get("q", "").strip()
         if q:
             qs = qs.filter(name__icontains=q) | qs.filter(hostname__icontains=q)
