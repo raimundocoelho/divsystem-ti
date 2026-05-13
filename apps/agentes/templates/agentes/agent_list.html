@@ -43,7 +43,7 @@
       <strong class="text-slate-600">v{{ latest_version|default:"—" }}</strong>
     </span>
     {% if outdated_count %}
-      <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[11px] font-semibold ring-1 ring-amber-200">
+      <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[11px] font-semibold">
         {{ outdated_count }} desatualizado(s) — atualizando automaticamente
       </span>
     {% endif %}
@@ -124,8 +124,8 @@
             <td class="px-4 py-2.5 hidden sm:table-cell">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold
-                             {% if a.is_outdated %}bg-amber-50 text-amber-700 ring-1 ring-amber-200
-                             {% elif a.agent_version %}bg-green-50 text-green-700 ring-1 ring-green-200
+                             {% if a.is_outdated %}bg-amber-50 text-amber-700
+                             {% elif a.agent_version %}bg-green-50 text-green-700
                              {% else %}bg-slate-100 text-slate-500{% endif %}">
                   {{ a.version_label }}
                 </span>
