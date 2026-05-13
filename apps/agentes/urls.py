@@ -10,4 +10,5 @@ urlpatterns = [
     path("<int:pk>/editar/", views.AgenteUpdateView.as_view(), name="edit"),
     path("<int:pk>/excluir/", views.AgenteDeleteView.as_view(), name="delete"),
     path("<int:pk>/comando/", views.SendRemoteCommandView.as_view(), name="send_command"),
+    path("<int:pk>/lotacao/", views.AgenteLotacaoUpdateView.as_view(), name="lotacao_update"),
 ]

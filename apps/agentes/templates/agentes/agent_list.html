@@ -4,7 +4,9 @@
 {% block page_title %}Agentes{% endblock %}
 
 {% block content %}
-<div data-poll-refresh="30">
+{{ setores_all|json_script:"setores-data" }}
+
+<div data-poll-refresh="30" x-data="lotacaoModal()">
   {# ---------- Header ---------- #}
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
     <div>
@@ -92,12 +94,10 @@
         <tbody class="bg-white">
           {% for a in agentes %}
           <tr class="group !bg-white transition-colors hover:!bg-slate-50/50">
-            {# Status #}
             <td class="px-4 py-2.5">
               <span class="pill pill-{{ a.online_status }}">{{ a.online_status_label }}</span>
             </td>
 
-            {# Hostname + descrição #}
             <td class="px-4 py-2.5">
               <a href="{% url 'agentes:detail' a.pk %}" class="font-semibold text-slate-800 hover:text-indigo-600 transition-colors">
                 {{ a.hostname|default:a.name }}
@@ -107,7 +107,6 @@
               {% endif %}
             </td>
 
-            {# Secretaria / Setor #}
             <td class="px-4 py-2.5 hidden lg:table-cell">
               {% if a.secretaria %}
                 <div class="text-xs font-medium text-indigo-600">{{ a.secretaria.nome }}</div>
@@ -120,7 +119,6 @@
               {% endif %}
             </td>
 
-            {# Versão #}
             <td class="px-4 py-2.5 hidden sm:table-cell">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold
@@ -137,12 +135,10 @@
               </div>
             </td>
 
-            {# Heartbeats #}
             <td class="px-4 py-2.5 hidden lg:table-cell">
               <span class="text-sm font-semibold text-slate-700">{{ a.hb_total|intcomma }}</span>
             </td>
 
-            {# Último Contato #}
             <td class="px-4 py-2.5"
                 title="{{ a.last_ping_at|default:a.last_seen_at|date:'d/m/Y H:i:s'|default:'Nunca' }}">
               <span class="text-xs text-slate-500">
@@ -152,14 +148,18 @@
               </span>
             </td>
 
-            {# Ações #}
             <td class="px-4 py-2.5 text-right">
               <div class="flex items-center justify-end gap-1">
-                <a href="{% url 'agentes:edit' a.pk %}"
-                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition"
-                   title="Alterar lotação">
+                <button type="button"
+                        data-agent-id="{{ a.pk }}"
+                        data-hostname="{{ a.hostname|default:a.name }}"
+                        data-secretaria="{{ a.secretaria_id|default:'' }}"
+                        data-setor="{{ a.setor_id|default:'' }}"
+                        @click="openFromBtn($event.currentTarget)"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                        title="Alterar lotação">
                   {% icon "lucide:building-2" "1em" %}
-                </a>
+                </button>
                 <a href="{% url 'agentes:detail' a.pk %}"
                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition"
                    title="Detalhes">
@@ -188,10 +188,99 @@
       </table>
     </div>
   </div>
+
+  {# ---------- Modal Alterar Lotação ---------- #}
+  <div x-show="open" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+       @keydown.escape.window="open=false"
+       x-transition.opacity>
+    <div @click.outside="open=false"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
+      <div>
+        <h3 class="text-lg font-semibold text-slate-800">Alterar Lotação</h3>
+        <p class="text-sm text-slate-500 mt-1">
+          Defina a secretaria e o setor de
+          <strong class="text-slate-700" x-text="hostname"></strong>.
+        </p>
+      </div>
+
+      <form :action="actionUrl" method="post" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+          <label class="label">Secretaria</label>
+          <select name="secretaria_id" x-model="secretariaId" class="input w-full">
+            <option value="">Nenhuma</option>
+            {% for sec in secretarias_list %}
+              <option value="{{ sec.id }}">{{ sec.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="label">Setor</label>
+          <select name="setor_id" x-model="setorId" class="input w-full">
+            <option value="">Nenhum</option>
+            <template x-for="s in setoresFiltrados()" :key="s.id">
+              <option :value="s.id" x-text="s.nome"></option>
+            </template>
+          </select>
+          <p class="help" x-show="!secretariaId">
+            Selecione uma secretaria pra liberar os setores.
+          </p>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="open=false"
+                  class="btn-secondary !py-1.5 !px-3 text-xs">Cancelar</button>
+          <button type="submit"
+                  class="btn-primary !py-1.5 !px-3 text-xs">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <script>
-  // Auto-refresh a cada 30s mantendo a query string.
-  setTimeout(function () { window.location.reload(); }, 30000);
+  function lotacaoModal() {
+    const setores = JSON.parse(document.getElementById('setores-data').textContent || '[]');
+    return {
+      open: false,
+      agentId: null,
+      hostname: '',
+      secretariaId: '',
+      setorId: '',
+      actionUrl: '',
+      setoresAll: setores,
+
+      openFromBtn(btn) {
+        const id = btn.dataset.agentId;
+        this.agentId = id;
+        this.hostname = btn.dataset.hostname || '';
+        this.secretariaId = btn.dataset.secretaria || '';
+        this.setorId = btn.dataset.setor || '';
+        this.actionUrl = '/admin/agentes/' + id + '/lotacao/';
+        this.open = true;
+      },
+
+      setoresFiltrados() {
+        if (!this.secretariaId) return [];
+        const sid = parseInt(this.secretariaId, 10);
+        // Limpa setor selecionado se nao pertence a secretaria atual.
+        if (this.setorId) {
+          const cur = this.setoresAll.find(s => s.id == this.setorId);
+          if (cur && cur.secretaria_id !== sid) this.setorId = '';
+        }
+        return this.setoresAll.filter(s => s.secretaria_id === sid);
+      },
+    };
+  }
+
+  // Auto-refresh a cada 30s — nao recarrega se o modal estiver aberto.
+  setTimeout(function () {
+    const root = document.querySelector('[x-data^="lotacaoModal"]');
+    const isOpen = root && root._x_dataStack && root._x_dataStack[0] && root._x_dataStack[0].open;
+    if (!isOpen) window.location.reload();
+  }, 30000);
 </script>
 {% endblock %}

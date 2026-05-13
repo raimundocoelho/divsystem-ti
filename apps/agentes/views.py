@@ -74,6 +74,13 @@ class AgenteListView(RoleRequiredMixin, ListView):
 
         ctx["filter_q"] = f["q"]
         ctx["filter_secretaria"] = f["secretaria"] or ""
+        # Lista plana de TODOS os setores ativos com secretaria_id pro modal de
+        # lotacao (Alpine filtra client-side por secretaria selecionada).
+        ctx["setores_all"] = list(
+            Setor.objects.filter(ativo=True)
+            .values("id", "nome", "secretaria_id")
+            .order_by("nome")
+        )
         ctx["filter_setor"] = f["setor"] or ""
         return ctx
 
@@ -149,3 +156,37 @@ class SendRemoteCommandView(RoleRequiredMixin, View):
         )
         messages.success(request, "Comando enfileirado para o agente.")
         return redirect("agentes:detail", pk=pk)
+
+
+class AgenteLotacaoUpdateView(RoleRequiredMixin, View):
+    """POST /agentes/<pk>/lotacao/ — atualiza secretaria/setor do agente.
+
+    Validacao: setor (se informado) precisa pertencer a secretaria escolhida.
+    Permite limpar ambos (lotacao vazia) passando strings vazias.
+    """
+
+    required_role = UserRole.GESTOR
+
+    def post(self, request, pk):
+        agente = get_object_or_404(AgentToken, pk=pk)
+        sec_id = (request.POST.get("secretaria_id") or "").strip() or None
+        set_id = (request.POST.get("setor_id") or "").strip() or None
+
+        if sec_id:
+            if not Secretaria.objects.filter(pk=sec_id, ativo=True).exists():
+                messages.error(request, "Secretaria invalida.")
+                return redirect("agentes:list")
+        if set_id:
+            qs = Setor.objects.filter(pk=set_id, ativo=True)
+            if sec_id:
+                qs = qs.filter(secretaria_id=sec_id)
+            if not qs.exists():
+                messages.error(request, "Setor invalido pra essa secretaria.")
+                return redirect("agentes:list")
+
+        agente.secretaria_id = sec_id
+        agente.setor_id = set_id
+        agente.save(update_fields=["secretaria_id", "setor_id", "updated_at"])
+        messages.success(request, f"Lotacao de {agente.hostname or agente.name} atualizada.")
+        return redirect("agentes:list")
+
