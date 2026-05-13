@@ -15,6 +15,12 @@ urlpatterns = [
     path("enroll", api_views.enroll, name="enroll"),
     path("commands/pending", api_views.commands_pending, name="commands_pending"),
     path("command-result", api_views.command_result, name="command_result"),
+    # --- novos endpoints adicionados na migracao Laravel -> Django ---
+    path("download/latest", api_views.download_latest, name="download_latest"),
+    path("software", api_views.software_inventory, name="software_inventory"),
+    path("screenshot", api_views.screenshot_upload, name="screenshot_upload"),
+    path("policies", api_views.policies_view, name="policies"),
+    path("policies/applied", api_views.policies_applied, name="policies_applied"),
     path("setup/resolve-master-key", api_views.setup_resolve_master_key, name="setup_master_key"),
     path("setup/validate/<str:code>", api_views.setup_validate_code, name="setup_validate"),
     path("setup/<str:code>/secretarias", api_views.setup_secretarias, name="setup_secretarias"),

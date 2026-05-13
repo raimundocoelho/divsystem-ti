@@ -8,7 +8,8 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from rest_framework import status
-from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -347,4 +348,113 @@ def command_result(request):
     cmd.save()
     return Response({"ok": True, "id": cmd.id, "status": cmd.status})
 
+# --- Self-update: info do binario mais recente -----------------------------
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def download_latest(request):
+    """`/download/latest` — versao/URL/sha256 do binario publicado.
+
+    Lido pelo SelfUpdater do agente C# a cada 1h. 404 quando AGENT_UPDATE_URL
+    nao esta configurado no .env (sem release publicada ainda). Valores vem
+    do .env, populados pelo build.bat depois do upload no R2.
+    """
+    if not settings.AGENT_UPDATE_URL:
+        return Response(
+            {"error": "Sem build publicada."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    return Response({
+        "version": settings.AGENT_LATEST_VERSION,
+        "url": settings.AGENT_UPDATE_URL,
+        "sha256": settings.AGENT_UPDATE_SHA256,
+    })
+
+
+# --- Inventario de software (POST /software) -------------------------------
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def software_inventory(request):
+    """`/software` — inventario de programas instalados, depois do heartbeat.
+
+    Persiste em AgentHeartbeat.software do ultimo heartbeat do agente (assim
+    o JSON nao se perde). TODO: criar tabela InstalledSoftware com upsert por
+    display_name+version pra listagem propria no painel.
+    """
+    agent: AgentToken = request.agent_token
+    software = (request.data or {}).get("software") or []
+    if not isinstance(software, list):
+        return Response({"error": "campo software precisa ser lista"}, status=400)
+
+    last_hb = (
+        AgentHeartbeat.objects.filter(agent_token=agent).order_by("-created_at").first()
+    )
+    if last_hb is not None:
+        last_hb.software = software
+        last_hb.save(update_fields=["software"])
+
+    return Response({"ok": True, "count": len(software)})
+
+
+# --- Screenshot upload (POST multipart /screenshot) ------------------------
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def screenshot_upload(request):
+    """`/screenshot` — upload multipart do PNG capturado pelo agente.
+
+    Atual: STUB. Aceita, loga tamanho, descarta. TODO: criar AgentScreenshot
+    model + storage R2 + view no painel pra exibir. Sem isso, o comando
+    screenshot_now do painel executa mas a imagem nao aparece em lugar nenhum.
+    """
+    agent: AgentToken = request.agent_token
+    f = request.FILES.get("file") or request.FILES.get("screenshot") or next(iter(request.FILES.values()), None)
+    size = f.size if f else 0
+    import logging
+    logging.getLogger("divsystem").info(
+        "screenshot recebido agent=%s tenant=%s size=%s — stub (descartado)",
+        agent.pk, agent.tenant_id, size,
+    )
+    return Response({"ok": True, "received_bytes": size, "note": "stub — persistencia pendente"})
+
+
+# --- Policies (GET /policies + POST /policies/applied) ---------------------
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def policies_view(request):
+    """`/policies` — lista consolidada de sites bloqueados/permitidos do tenant.
+
+    Mesmo dado que vai inline no /heartbeat (blocked_sites); o endpoint
+    dedicado serve sync forcado (comando apply_policies do painel).
+    """
+    agent: AgentToken = request.agent_token
+    blocked = Setting.get("blocked_sites", default=[], tenant=agent.tenant) or []
+    allowed = Setting.get("allowed_sites", default=[], tenant=agent.tenant) or []
+    return Response({
+        "blocked": list(blocked),
+        "allowed": list(allowed),
+        "updated_at": timezone.now().isoformat(),
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def policies_applied(request):
+    """`/policies/applied` — ack do agente reportando que aplicou N regras.
+
+    Atual: log + 200 OK. TODO: persistir em AgentPolicyApplyLog (ou no
+    proprio AgentToken) pra observability (ex.: agente X aplicou 23 regras).
+    """
+    agent: AgentToken = request.agent_token
+    data = request.data or {}
+    import logging
+    logging.getLogger("divsystem").info(
+        "policies aplicadas agent=%s count=%s agent_version=%s",
+        agent.pk, data.get("count"), data.get("agent_version"),
+    )
+    return Response({"ok": True})
 
