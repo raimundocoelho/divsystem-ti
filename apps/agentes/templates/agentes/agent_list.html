@@ -91,7 +91,7 @@
         </thead>
         <tbody class="divide-y divide-slate-50">
           {% for a in agentes %}
-          <tr class="group transition-colors hover:bg-slate-50/50 {% cycle '' 'bg-slate-50/30' %}">
+          <tr class="group transition-colors hover:bg-slate-50/50">
             {# Status #}
             <td class="px-4 py-2.5">
               <span class="pill pill-{{ a.online_status }}">{{ a.online_status_label }}</span>
