@@ -1,12 +1,16 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib import messages
+from django.db.models import Count, Q
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
-from datetime import timedelta
 from django.utils import timezone
 from django.views.generic import DeleteView, DetailView, ListView, UpdateView, View
 
 from apps.core.permissions import UserRole
 from apps.core.views_mixins import RoleRequiredMixin
+from apps.organizacoes.models import Secretaria, Setor
 
 from .forms import AgentTokenForm, SendCommandForm
 from .models import AgentToken, RemoteCommand
@@ -16,29 +20,62 @@ class AgenteListView(RoleRequiredMixin, ListView):
     required_role = UserRole.GESTOR
     template_name = "agentes/agent_list.html"
     context_object_name = "agentes"
-    paginate_by = 30
+    paginate_by = None  # tabela completa — counts e filtros sao client-friendly
+
+    def _filters(self):
+        get = self.request.GET
+        return {
+            "q": get.get("q", "").strip(),
+            "secretaria": get.get("secretaria", "").strip() or None,
+            "setor": get.get("setor", "").strip() or None,
+        }
 
     def get_queryset(self):
-        from django.db.models import Count, Q
-        # Contagem de heartbeats: total (lifetime) + ultimas 24h.
-        # Conditional aggregation roda numa unica query, sem N+1.
-        since_24h = timezone.now() - timedelta(hours=24)
+        f = self._filters()
         qs = (
             AgentToken.objects
             .select_related("secretaria", "setor")
-            .annotate(
-                hb_total=Count("heartbeats", distinct=True),
-                hb_24h=Count(
-                    "heartbeats",
-                    filter=Q(heartbeats__created_at__gte=since_24h),
-                    distinct=True,
-                ),
-            )
+            .annotate(hb_total=Count("heartbeats", distinct=True))
         )
-        q = self.request.GET.get("q", "").strip()
-        if q:
-            qs = qs.filter(name__icontains=q) | qs.filter(hostname__icontains=q)
-        return qs.order_by("name")
+        if f["secretaria"]:
+            qs = qs.filter(secretaria_id=f["secretaria"])
+        if f["setor"]:
+            qs = qs.filter(setor_id=f["setor"])
+        if f["q"]:
+            q = f["q"]
+            qs = qs.filter(
+                Q(hostname__icontains=q)
+                | Q(name__icontains=q)
+                | Q(machine_id__icontains=q)
+                | Q(description__icontains=q)
+            )
+        return qs.order_by("-last_seen_at", "name")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        f = self._filters()
+
+        agentes = list(ctx["agentes"])
+
+        # Counts derivados em Python (lista pequena, ~dezenas de agentes).
+        ctx["online_count"] = sum(1 for a in agentes if a.online_status == "online")
+        ctx["warning_count"] = sum(1 for a in agentes if a.online_status == "warning")
+        ctx["offline_count"] = sum(1 for a in agentes if a.online_status in ("offline", "inativo"))
+        ctx["outdated_count"] = sum(1 for a in agentes if a.is_outdated())
+
+        ctx["latest_version"] = AgentToken.latest_available_version()
+
+        # Listas pros selects (escopo do tenant respeitado por TenantOwnedModel).
+        ctx["secretarias_list"] = Secretaria.objects.filter(ativo=True).order_by("nome")
+        setores = Setor.objects.filter(ativo=True)
+        if f["secretaria"]:
+            setores = setores.filter(secretaria_id=f["secretaria"])
+        ctx["setores_list"] = setores.order_by("nome")
+
+        ctx["filter_q"] = f["q"]
+        ctx["filter_secretaria"] = f["secretaria"] or ""
+        ctx["filter_setor"] = f["setor"] or ""
+        return ctx
 
 
 class AgenteUpdateView(RoleRequiredMixin, UpdateView):
@@ -56,12 +93,10 @@ class AgenteDetailView(RoleRequiredMixin, DetailView):
     context_object_name = "agente"
 
     def get_context_data(self, **kwargs):
-        from django.db.models import Q
         ctx = super().get_context_data(**kwargs)
         agente = self.object
-        # Pega o último heartbeat que TEM ALGUM dado coletado. Heartbeats vazios
-        # (hardware/network/system_info todos null) ocorrem quando o collector
-        # do agente teve erro — não servem pra render do inventário.
+        # Pega o ultimo heartbeat com algum dado (hardware/network/system_info).
+        # Heartbeats vazios ocorrem quando o collector teve erro.
         ctx["latest_heartbeat"] = (
             agente.heartbeats
             .filter(
@@ -91,7 +126,7 @@ class SendRemoteCommandView(RoleRequiredMixin, View):
         agente = get_object_or_404(AgentToken, pk=pk)
         form = SendCommandForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Comando inválido.")
+            messages.error(request, "Comando invalido.")
             return redirect("agentes:detail", pk=pk)
 
         cmd = form.cleaned_data["cmd_type"]

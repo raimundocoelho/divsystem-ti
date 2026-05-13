@@ -120,6 +120,29 @@ class AgentToken(TenantOwnedModel):
             "aguardando": "Aguardando primeiro contato",
         }[self.online_status]
 
+    # --- Versionamento -----------------------------------------------------
+
+    def is_outdated(self) -> bool:
+        """True se agent_version < AGENT_LATEST_VERSION publicada."""
+        if not self.agent_version or not settings.AGENT_LATEST_VERSION:
+            return False
+        try:
+            return _version_tuple(self.agent_version) < _version_tuple(settings.AGENT_LATEST_VERSION)
+        except ValueError:
+            return False
+
+    def version_label(self) -> str:
+        return f"v{self.agent_version}" if self.agent_version else "—"
+
+    def version_badge_color(self) -> str:
+        if not self.agent_version:
+            return "zinc"
+        return "amber" if self.is_outdated() else "green"
+
+    @classmethod
+    def latest_available_version(cls) -> str:
+        return settings.AGENT_LATEST_VERSION or ""
+
 
 def _version_tuple(v: str):
     return tuple(int(p) for p in v.strip().split(".") if p.isdigit())

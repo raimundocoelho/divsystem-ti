@@ -1,38 +1,197 @@
 {% extends "layouts/app.html" %}
-{% load divsystem %}
+{% load humanize divsystem %}
 {% block title %}Agentes{% endblock %}
 {% block page_title %}Agentes{% endblock %}
 
 {% block content %}
-<div class="card">
-  <header class="card-header">
-    <form method="get" class="flex flex-1"><input class="input max-w-xs" type="search" name="q" placeholder="Buscar..." value="{{ request.GET.q }}"></form>
-    <span class="text-xs text-slate-400">Os agentes se registram automaticamente ao serem instalados nas máquinas.</span>
-  </header>
-  <div class="overflow-x-auto">
-    <table class="table">
-      <thead><tr><th>Nome / Hostname</th><th>Setor</th><th>Versão</th><th>Última conexão</th><th class="text-center">Heartbeats</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
-      <tbody>
-        {% for a in agentes %}
-        <tr>
-          <td>
-            <a href="{% url 'agentes:detail' a.pk %}" class="font-medium text-zinc-900 hover:text-blue-600">{{ a.name }}</a>
-            <p class="text-xs text-zinc-500">{{ a.hostname|default:"—" }} · {{ a.machine_id|default:"sem HWID"|truncatechars:24 }}</p>
-          </td>
-          <td class="text-zinc-600">{{ a.secretaria.nome|default:"—" }}<br><span class="text-xs">{{ a.setor.nome|default:"" }}</span></td>
-          <td class="font-mono text-zinc-600">{{ a.agent_version|default:"—" }}</td>
-          <td class="text-zinc-500 text-xs">{{ a.last_seen_at|default:"—" }}</td>
-          <td class="text-center"><span class="font-mono text-sm font-semibold text-zinc-900">{{ a.hb_total }}</span><br><span class="text-[10px] text-zinc-500">24h: {{ a.hb_24h }}</span></td>
-          <td><span class="pill pill-{{ a.online_status }}">{{ a.online_status_label }}</span></td>
-          <td class="text-right space-x-1">
-            <a href="{% url 'agentes:detail' a.pk %}" class="btn-secondary !py-1 !px-2 text-xs">Detalhes</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="7" class="text-center text-zinc-500 py-10">Nenhum agente registrado ainda.</td></tr>
+<div data-poll-refresh="30">
+  {# ---------- Header ---------- #}
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Agentes</h1>
+      <p class="text-sm text-slate-500 mt-1">{{ agentes|length }} estações registradas</p>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <a href="{% url 'agentes:list' %}{% if filter_q or filter_secretaria or filter_setor %}?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_secretaria %}secretaria={{ filter_secretaria }}&{% endif %}{% if filter_setor %}setor={{ filter_setor }}{% endif %}{% endif %}"
+         class="btn-secondary !py-1.5 !px-3 text-xs flex items-center gap-1.5"
+         title="Atualizar status">
+        {% icon "lucide:refresh-cw" "1em" %}<span>Atualizar</span>
+      </a>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-lg border border-green-200">
+        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+        <span class="text-sm font-semibold text-green-700">{{ online_count }}</span>
+        <span class="text-xs text-green-600">online</span>
+      </div>
+      {% if warning_count %}
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-lg border border-yellow-200">
+        <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+        <span class="text-sm font-semibold text-yellow-700">{{ warning_count }}</span>
+        <span class="text-xs text-yellow-600">warning</span>
+      </div>
+      {% endif %}
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 rounded-lg border border-red-200">
+        <div class="w-2 h-2 rounded-full bg-red-500"></div>
+        <span class="text-sm font-semibold text-red-700">{{ offline_count }}</span>
+        <span class="text-xs text-red-600">offline</span>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Versão info ---------- #}
+  <div class="mb-4 flex items-center gap-2 text-xs text-slate-400">
+    <span>Versão mais recente:
+      <strong class="text-slate-600">v{{ latest_version|default:"—" }}</strong>
+    </span>
+    {% if outdated_count %}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[11px] font-semibold ring-1 ring-amber-200">
+        {{ outdated_count }} desatualizado(s) — atualizando automaticamente
+      </span>
+    {% endif %}
+  </div>
+
+  {# ---------- Filtros ---------- #}
+  <form method="get" class="mb-4 flex flex-col sm:flex-row gap-3" id="agent-filters">
+    <div class="sm:w-52">
+      <select name="secretaria" onchange="this.form.submit()" class="input w-full">
+        <option value="">Todas</option>
+        {% for sec in secretarias_list %}
+          <option value="{{ sec.id }}" {% if filter_secretaria == sec.id|stringformat:"s" %}selected{% endif %}>{{ sec.nome }}</option>
         {% endfor %}
-      </tbody>
-    </table>
+      </select>
+    </div>
+    <div class="sm:w-52">
+      <select name="setor" onchange="this.form.submit()" class="input w-full">
+        <option value="">Todos</option>
+        {% for s in setores_list %}
+          <option value="{{ s.id }}" {% if filter_setor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex-1">
+      <input type="search" name="q" value="{{ filter_q }}"
+             placeholder="Buscar por hostname, descrição ou machine_id..."
+             class="input w-full">
+    </div>
+  </form>
+
+  {# ---------- Tabela ---------- #}
+  <div class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-100 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50/50">
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Hostname</th>
+            <th class="px-4 py-3 hidden lg:table-cell">Secretaria / Setor</th>
+            <th class="px-4 py-3 hidden sm:table-cell">Versão</th>
+            <th class="px-4 py-3 hidden lg:table-cell">Heartbeats</th>
+            <th class="px-4 py-3">Último Contato</th>
+            <th class="px-4 py-3 text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for a in agentes %}
+          <tr class="group transition-colors hover:bg-slate-50/50 {% cycle '' 'bg-slate-50/30' %}">
+            {# Status #}
+            <td class="px-4 py-2.5">
+              <span class="pill pill-{{ a.online_status }}">{{ a.online_status_label }}</span>
+            </td>
+
+            {# Hostname + descrição #}
+            <td class="px-4 py-2.5">
+              <a href="{% url 'agentes:detail' a.pk %}" class="font-semibold text-slate-800 hover:text-indigo-600 transition-colors">
+                {{ a.hostname|default:a.name }}
+              </a>
+              {% if a.description %}
+                <div class="text-[11px] text-slate-400 mt-0.5">{{ a.description }}</div>
+              {% endif %}
+            </td>
+
+            {# Secretaria / Setor #}
+            <td class="px-4 py-2.5 hidden lg:table-cell">
+              {% if a.secretaria %}
+                <div class="text-xs font-medium text-indigo-600">{{ a.secretaria.nome }}</div>
+              {% endif %}
+              {% if a.setor %}
+                <div class="text-[11px] text-slate-500">{{ a.setor.nome }}</div>
+              {% endif %}
+              {% if not a.secretaria and not a.setor %}
+                <span class="text-xs text-slate-400">—</span>
+              {% endif %}
+            </td>
+
+            {# Versão #}
+            <td class="px-4 py-2.5 hidden sm:table-cell">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold
+                             {% if a.is_outdated %}bg-amber-50 text-amber-700 ring-1 ring-amber-200
+                             {% elif a.agent_version %}bg-green-50 text-green-700 ring-1 ring-green-200
+                             {% else %}bg-slate-100 text-slate-500{% endif %}">
+                  {{ a.version_label }}
+                </span>
+                {% if a.is_outdated %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-semibold">
+                    Desatualizado
+                  </span>
+                {% endif %}
+              </div>
+            </td>
+
+            {# Heartbeats #}
+            <td class="px-4 py-2.5 hidden lg:table-cell">
+              <span class="text-sm font-semibold text-slate-700">{{ a.hb_total|intcomma }}</span>
+            </td>
+
+            {# Último Contato #}
+            <td class="px-4 py-2.5"
+                title="{{ a.last_ping_at|default:a.last_seen_at|date:'d/m/Y H:i:s'|default:'Nunca' }}">
+              <span class="text-xs text-slate-500">
+                {% with ref=a.last_ping_at|default:a.last_seen_at %}
+                  {% if ref %}{{ ref|naturaltime }}{% else %}Nunca{% endif %}
+                {% endwith %}
+              </span>
+            </td>
+
+            {# Ações #}
+            <td class="px-4 py-2.5 text-right">
+              <div class="flex items-center justify-end gap-1">
+                <a href="{% url 'agentes:edit' a.pk %}"
+                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                   title="Alterar lotação">
+                  {% icon "lucide:building-2" "1em" %}
+                </a>
+                <a href="{% url 'agentes:detail' a.pk %}"
+                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                   title="Detalhes">
+                  {% icon "lucide:eye" "1em" %}
+                </a>
+                <a href="{% url 'agentes:delete' a.pk %}"
+                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition"
+                   title="Excluir">
+                  {% icon "lucide:trash-2" "1em" %}
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="py-12 text-center">
+              <div class="flex flex-col items-center gap-2">
+                {% icon "lucide:server-off" "2.5em" "text-slate-300" %}
+                <span class="text-sm text-slate-400">Nenhum agente encontrado</span>
+                <span class="text-xs text-slate-400">Os agentes se registram automaticamente com a senha mestre</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
+
+<script>
+  // Auto-refresh a cada 30s mantendo a query string.
+  setTimeout(function () { window.location.reload(); }, 30000);
+</script>
 {% endblock %}
