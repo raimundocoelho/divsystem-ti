@@ -233,7 +233,7 @@ class RemoteCommand(models.Model):
         "usb_eject":        {"label": "[legado] Ejetar USB", "payload": ["drive_letter"], "critical": False},
         "open_url":         {"label": "[legado] Abrir URL", "payload": ["url"], "critical": False},
         "change_ip":        {"label": "[legado] Alterar IP", "payload": ["ip", "mask", "gateway", "dns1", "dns2", "dhcp"], "critical": True},
-        "set_wallpaper":    {"label": "[legado] Papel de parede", "payload": ["image_url"], "critical": False},
+        "set_wallpaper":  {"label": "Papel de parede", "payload": ["image_url"], "critical": False},
         "deploy_agent":     {"label": "[legado] Instalar agente remoto", "payload": ["target_ip", "username", "password", "enroll_code", "server_url"], "critical": True},
         "uninstall_agent":  {"label": "[legado] Desinstalar agente", "payload": [], "critical": True},
     }

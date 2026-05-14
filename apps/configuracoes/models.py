@@ -91,3 +91,69 @@ class Setting(TenantOwnedModel):
             return json.loads(raw)
         except (TypeError, ValueError):
             return raw
+
+
+class Wallpaper(TenantOwnedModel):
+    """Imagem de papel de parede aplicada (ou aplicavel) aos agentes do tenant.
+
+    Cada upload vira um registro. Aplicar = criar RemoteCommand `set_wallpaper`
+    pra cada agente ativo no escopo (tenant inteiro / secretaria / setor).
+    """
+
+    secretaria = models.ForeignKey(
+        "organizacoes.Secretaria",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wallpapers",
+        help_text="Escopo opcional — se vazio, aplica em todo o tenant.",
+    )
+    setor = models.ForeignKey(
+        "organizacoes.Setor",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wallpapers",
+    )
+
+    image_url = models.URLField(max_length=500)
+    image_key = models.CharField(max_length=500, help_text="R2 object key (pra delete futuro).")
+    original_filename = models.CharField(max_length=255, blank=True, default="")
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    file_size = models.PositiveIntegerField(default=0)
+
+    uploaded_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wallpapers_uploaded",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    applied_at = models.DateTimeField(null=True, blank=True)
+    applied_count = models.PositiveIntegerField(
+        default=0, help_text="Quantos agentes receberam o comando."
+    )
+
+    class Meta:
+        verbose_name = "Papel de parede"
+        verbose_name_plural = "Papeis de parede"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Wallpaper #{self.pk} ({self.original_filename or self.image_key})"
+
+    @property
+    def scope_label(self) -> str:
+        parts = []
+        if self.secretaria_id:
+            parts.append(self.secretaria.nome if self.secretaria else f"sec#{self.secretaria_id}")
+        if self.setor_id:
+            parts.append(self.setor.nome if self.setor else f"setor#{self.setor_id}")
+        return " > ".join(parts) if parts else "Tenant inteiro"
+

@@ -1,0 +1,161 @@
+{% extends "layouts/app.html" %}
+{% load humanize divsystem %}
+{% block title %}Configurações{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+
+{% block content %}
+{{ setores_all|json_script:"setores-data" }}
+
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-800">Configurações</h1>
+    <p class="text-sm text-slate-500 mt-1">Configurações do sistema — somente administradores.</p>
+  </div>
+
+  {# ───────── Card: Papel de Parede ───────── #}
+  <div class="rounded-xl bg-white p-6"
+       x-data="wallpaperUpload()">
+    <div class="flex items-center gap-2 mb-4">
+      {% icon "lucide:image" "1.2em" "text-indigo-500" %}
+      <h2 class="text-base font-semibold text-slate-800">Papel de Parede</h2>
+    </div>
+    <p class="text-sm text-slate-500 mb-5">
+      Defina a imagem de fundo (wallpaper) dos computadores gerenciados. Ao salvar, o comando é enfileirado para os agentes no escopo selecionado e aplicado automaticamente.
+    </p>
+
+    <form method="post" enctype="multipart/form-data"
+          action="{% url 'configuracoes:wallpaper_upload' %}"
+          class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {% csrf_token %}
+
+      <div class="space-y-4">
+        <div>
+          <label class="label">Escopo — Secretaria</label>
+          <select name="secretaria_id" x-model="secretariaId" class="input w-full">
+            <option value="">Todas (tenant inteiro)</option>
+            {% for sec in secretarias_list %}
+              <option value="{{ sec.id }}">{{ sec.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="label">Escopo — Setor</label>
+          <select name="setor_id" x-model="setorId" class="input w-full">
+            <option value="">Todos</option>
+            <template x-for="s in setoresFiltrados()" :key="s.id">
+              <option :value="s.id" x-text="s.nome"></option>
+            </template>
+          </select>
+          <p class="help" x-show="!secretariaId">Selecione uma secretaria pra filtrar setores.</p>
+        </div>
+
+        <div>
+          <label class="label">Imagem</label>
+          <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required
+                 @change="onFile($event)"
+                 class="block w-full text-sm text-slate-700 file:mr-3 file:py-1.5 file:px-3
+                        file:rounded-md file:border-0 file:bg-indigo-50 file:text-indigo-700
+                        file:font-medium hover:file:bg-indigo-100 cursor-pointer">
+          <p class="help">JPG, PNG ou WEBP. Máximo 5 MB. Recomendado 1920×1080.</p>
+        </div>
+
+        <button type="submit"
+                class="btn-primary w-full !py-2 text-sm flex items-center justify-center gap-2">
+          {% icon "lucide:upload" "1em" %}
+          <span>Enviar para os agentes</span>
+        </button>
+      </div>
+
+      <div>
+        <label class="label">Pré-visualização</label>
+        <div class="aspect-video w-full rounded-lg bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center overflow-hidden">
+          <template x-if="previewUrl">
+            <img :src="previewUrl" alt="Preview" class="w-full h-full object-cover">
+          </template>
+          <template x-if="!previewUrl">
+            <div class="text-center text-slate-400 text-xs">
+              {% icon "lucide:image" "2em" %}
+              <p class="mt-2">Nenhuma imagem selecionada</p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </form>
+
+    {# Histórico recente #}
+    {% if wallpapers %}
+    <div class="mt-6 pt-5 border-t border-slate-100">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Últimos envios</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for wp in wallpapers %}
+          <div class="rounded-lg bg-slate-50 p-3">
+            <div class="aspect-video w-full rounded-md bg-white ring-1 ring-slate-200 overflow-hidden mb-2">
+              <img src="{{ wp.image_url }}" alt="{{ wp.original_filename }}" class="w-full h-full object-cover" loading="lazy">
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-slate-700 truncate" title="{{ wp.original_filename }}">{{ wp.original_filename|default:"sem nome" }}</p>
+                <p class="text-[11px] text-slate-500 truncate">{{ wp.scope_label }}</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">
+                  {{ wp.applied_count }} agente(s) · {{ wp.created_at|naturaltime }}
+                </p>
+              </div>
+              <form method="post" action="{% url 'configuracoes:wallpaper_reapply' wp.pk %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                        title="Reenviar pros mesmos agentes">
+                  {% icon "lucide:rotate-cw" "0.9em" %}
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ───────── Link pro CRUD avançado de Settings ───────── #}
+  <div class="rounded-xl bg-white p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-base font-semibold text-slate-800">Configurações avançadas</h2>
+        <p class="text-sm text-slate-500 mt-1">Pares chave-valor (feature flags, integrações).</p>
+      </div>
+      <a href="{% url 'configuracoes:setting_list' %}" class="btn-secondary !py-1.5 !px-3 text-xs">
+        Abrir
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function wallpaperUpload() {
+    const setores = JSON.parse(document.getElementById('setores-data').textContent || '[]');
+    return {
+      secretariaId: '',
+      setorId: '',
+      setoresAll: setores,
+      previewUrl: null,
+
+      onFile(e) {
+        const f = e.target.files && e.target.files[0];
+        if (!f) { this.previewUrl = null; return; }
+        this.previewUrl = URL.createObjectURL(f);
+      },
+
+      setoresFiltrados() {
+        if (!this.secretariaId) return [];
+        const sid = parseInt(this.secretariaId, 10);
+        if (this.setorId) {
+          const cur = this.setoresAll.find(s => s.id == this.setorId);
+          if (cur && cur.secretaria_id !== sid) this.setorId = '';
+        }
+        return this.setoresAll.filter(s => s.secretaria_id === sid);
+      },
+    };
+  }
+</script>
+{% endblock %}
