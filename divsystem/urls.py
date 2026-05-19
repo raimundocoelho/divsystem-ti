@@ -26,6 +26,18 @@ urlpatterns = [
         include(("apps.mikrotik.urls", "mikrotik"), namespace="mikrotik"),
     ),
     path(
+        "admin/patrimonio/",
+        include(("apps.patrimonio.urls", "patrimonio"), namespace="patrimonio"),
+    ),
+    path(
+        "admin/frota/",
+        include(("apps.frota.urls", "frota"), namespace="frota"),
+    ),
+    path(
+        "admin/transporte/",
+        include(("apps.transporte.urls", "transporte"), namespace="transporte"),
+    ),
+    path(
         "api/v1/agent/",
         include(("apps.agentes.api_urls", "agent_api"), namespace="agent_api"),
     ),
