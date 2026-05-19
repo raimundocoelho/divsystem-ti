@@ -19,7 +19,15 @@ from apps.core.models import Tenant
 from apps.organizacoes.models import Secretaria, Setor
 
 from .authentication import AgentTokenAuthentication
-from .models import AgentHeartbeat, AgentToken, RemoteCommand
+from .models import (
+    AgentHeartbeat,
+    AgentToken,
+    BlockedSite,
+    RemoteCommand,
+    SitePolicy,
+    WorkstationPolicy,
+    consolidated_site_rules_for_agent,
+)
 from .serializers import (
     CommandResultSerializer,
     EnrollSerializer,
@@ -108,9 +116,20 @@ def heartbeat(request):
         cmd.sent_at = now
         cmd.save(update_fields=["status", "sent_at", "updated_at"])
 
+    # Regras consolidadas (políticas + BlockedSite legado) — espelha
+    # `AgentController::heartbeat` do Laravel.
+    site_rules = consolidated_site_rules_for_agent(agent)
+    legacy_blocked = BlockedSite.all_tenants.filter(
+        tenant_id=agent.tenant_id, active=True
+    ).values_list("domain", flat=True)
+    for d in legacy_blocked:
+        site_rules[d] = "block"
+    blocked_sites = [d for d, a in site_rules.items() if a == "block"]
+
     return Response({
         "message": "Heartbeat recebido",
         "machine_id": agent.machine_id,
+        "blocked_sites": blocked_sites,
         "pending_commands": [
             {"id": c.id, "command": c.command, "payload": c.payload or {}}
             for c in pending
@@ -131,9 +150,15 @@ def heartbeat(request):
 @permission_classes([IsAuthenticated])
 def config_endpoint(request):
     agent: AgentToken = request.agent_token
-    blocked = Setting.get("blocked_sites", default=[], tenant=agent.tenant) or []
+    site_rules = consolidated_site_rules_for_agent(agent)
+    legacy_blocked = BlockedSite.all_tenants.filter(
+        tenant_id=agent.tenant_id, active=True
+    ).values_list("domain", flat=True)
+    for d in legacy_blocked:
+        site_rules[d] = "block"
+    blocked_sites = [d for d, a in site_rules.items() if a == "block"]
     return Response({
-        "blocked_sites": blocked,
+        "blocked_sites": blocked_sites,
         "monitor_interval_seconds": 60,
         "collect_interval_minutes": 30,
     })
@@ -426,35 +451,59 @@ def screenshot_upload(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def policies_view(request):
-    """`/policies` — lista consolidada de sites bloqueados/permitidos do tenant.
+    """`/policies` — regras consolidadas (políticas + BlockedSite) pro agente.
 
-    Mesmo dado que vai inline no /heartbeat (blocked_sites); o endpoint
-    dedicado serve sync forcado (comando apply_policies do painel).
+    Espelha `AgentController::policies` do Laravel:
+      - Consolida regras de políticas globais + atribuídas + overrides.
+      - Mescla com `BlockedSite` (lista legada por tenant) como `block`.
+      - Retorna `blocked` / `allowed` / `updated_at` pro agente sincronizar.
     """
     agent: AgentToken = request.agent_token
-    blocked = Setting.get("blocked_sites", default=[], tenant=agent.tenant) or []
-    allowed = Setting.get("allowed_sites", default=[], tenant=agent.tenant) or []
+
+    site_rules = consolidated_site_rules_for_agent(agent)
+    legacy_blocked = BlockedSite.all_tenants.filter(
+        tenant_id=agent.tenant_id, active=True
+    ).values_list("domain", flat=True)
+    for d in legacy_blocked:
+        site_rules[d] = "block"
+
+    blocked, allowed = [], []
+    for domain, action in site_rules.items():
+        (blocked if action == "block" else allowed).append(domain)
+
+    # updated_at = mais recente entre WorkstationPolicy do agente e SitePolicy global
+    latest_wp = (
+        WorkstationPolicy.objects.filter(agent_token=agent)
+        .order_by("-updated_at")
+        .values_list("updated_at", flat=True)
+        .first()
+    )
+    latest_global = (
+        SitePolicy.all_tenants.filter(is_global=True, active=True)
+        .order_by("-updated_at")
+        .values_list("updated_at", flat=True)
+        .first()
+    )
+    candidates = [t for t in (latest_wp, latest_global) if t]
+    last_modified = max(candidates).isoformat() if candidates else timezone.now().isoformat()
+
     return Response({
-        "blocked": list(blocked),
-        "allowed": list(allowed),
-        "updated_at": timezone.now().isoformat(),
+        "blocked": sorted(blocked),
+        "allowed": sorted(allowed),
+        "updated_at": last_modified,
     })
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def policies_applied(request):
-    """`/policies/applied` — ack do agente reportando que aplicou N regras.
+    """`/policies/applied` — agente confirma aplicação das regras.
 
-    Atual: log + 200 OK. TODO: persistir em AgentPolicyApplyLog (ou no
-    proprio AgentToken) pra observability (ex.: agente X aplicou 23 regras).
+    Marca `applied_at = now()` em todas as WorkstationPolicy desse agente.
     """
     agent: AgentToken = request.agent_token
-    data = request.data or {}
-    import logging
-    logging.getLogger("divsystem").info(
-        "policies aplicadas agent=%s count=%s agent_version=%s",
-        agent.pk, data.get("count"), data.get("agent_version"),
+    WorkstationPolicy.objects.filter(agent_token=agent).update(
+        applied_at=timezone.now()
     )
-    return Response({"ok": True})
+    return Response({"message": "Políticas marcadas como aplicadas"})
 

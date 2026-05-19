@@ -316,3 +316,233 @@ def _screenshot_upload_to(instance, filename: str) -> str:
     return f"screenshots/_removed/{filename}"
 
 
+# ============================================================================
+# Políticas de Sites via agente — porte 1:1 do Laravel `SitePolicy`/`SiteRule`/
+# `WorkstationPolicy`/`BlockedSite`. O agente Windows consome o resultado em
+# /api/v1/agent/policies e aplica via hosts file / DNS.
+# ============================================================================
+
+
+class SitePolicy(TenantOwnedModel):
+    """Política nomeada com várias regras de bloqueio/liberação de domínios."""
+
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=500, blank=True, default="")
+    is_global = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="site_policies_criadas",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Política de Sites"
+        verbose_name_plural = "Políticas de Sites"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "is_global"]),
+            models.Index(fields=["tenant", "active"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def active_categories(self) -> list[str]:
+        return list(
+            self.rules.exclude(category__isnull=True)
+            .exclude(category="")
+            .values_list("category", flat=True)
+            .distinct()
+        )
+
+    def add_category(self, category: str) -> int:
+        from apps.agentes.site_categories import SITE_CATEGORIES
+
+        domains = SITE_CATEGORIES.get(category, {}).get("domains", [])
+        n = 0
+        for domain in domains:
+            SiteRule.objects.update_or_create(
+                site_policy=self,
+                domain=domain,
+                defaults={"action": "block", "category": category},
+            )
+            n += 1
+        return n
+
+    def remove_category(self, category: str) -> int:
+        deleted, _ = self.rules.filter(category=category).delete()
+        return deleted
+
+
+class SiteRule(models.Model):
+    """Regra individual de uma SitePolicy (1 domínio + ação)."""
+
+    ACTION_CHOICES = [
+        ("block", "Bloquear"),
+        ("allow", "Liberar"),
+    ]
+
+    site_policy = models.ForeignKey(
+        SitePolicy,
+        on_delete=models.CASCADE,
+        related_name="rules",
+    )
+    domain = models.CharField(max_length=255)
+    action = models.CharField(max_length=8, choices=ACTION_CHOICES, default="block")
+    category = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Regra de Site"
+        verbose_name_plural = "Regras de Sites"
+        ordering = ["domain"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_policy", "domain"],
+                name="uq_siterule_policy_domain",
+            ),
+        ]
+        indexes = [models.Index(fields=["category"])]
+
+    def __str__(self) -> str:
+        return f"{self.get_action_display()} {self.domain}"
+
+    def is_block(self) -> bool:
+        return self.action == "block"
+
+    def category_label(self) -> str:
+        from apps.agentes.site_categories import category_label
+
+        return category_label(self.category)
+
+
+class WorkstationPolicy(models.Model):
+    """Associa uma SitePolicy a um AgentToken específico, com overrides opcionais."""
+
+    agent_token = models.ForeignKey(
+        AgentToken,
+        on_delete=models.CASCADE,
+        related_name="workstation_policies",
+    )
+    site_policy = models.ForeignKey(
+        SitePolicy,
+        on_delete=models.CASCADE,
+        related_name="workstation_policies",
+    )
+    override_rules = models.JSONField(null=True, blank=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Política da Workstation"
+        verbose_name_plural = "Políticas de Workstations"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["agent_token", "site_policy"],
+                name="uq_wpolicy_agent_policy",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.site_policy.name} → {self.agent_token.hostname or self.agent_token.name}"
+
+    def is_applied(self) -> bool:
+        return self.applied_at is not None and self.applied_at >= self.updated_at
+
+    def consolidated_rules(self) -> dict[str, str]:
+        rules: dict[str, str] = {}
+        for r in self.site_policy.rules.all():
+            rules[r.domain] = r.action
+        for o in (self.override_rules or []):
+            d = o.get("domain")
+            a = o.get("action")
+            if d and a:
+                rules[d] = a
+        return rules
+
+
+class BlockedSite(TenantOwnedModel):
+    """Lista legada simples de sites bloqueados por tenant.
+
+    O agente recebe estes domínios como `block` no /policies além das regras
+    consolidadas vindas das SitePolicy.
+    """
+
+    domain = models.CharField(max_length=255)
+    reason = models.CharField(max_length=500, blank=True, default="")
+    category = models.CharField(max_length=64, blank=True, default="")
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blocked_sites_criados",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Site Bloqueado"
+        verbose_name_plural = "Sites Bloqueados"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "domain"],
+                name="uq_blockedsite_tenant_domain",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.domain
+
+
+def consolidated_site_rules_for_agent(agent_token: AgentToken) -> dict[str, str]:
+    """Reproduz `AgentToken::consolidatedSiteRules()` do Laravel.
+
+    Ordem de prioridade (sobreposição de baixo pra cima):
+      1. Políticas globais ativas (is_global=True), opcionalmente filtradas por
+         tenant (ou globais sem tenant).
+      2. Políticas atribuídas via WorkstationPolicy (sobrescrevem globais).
+      3. Overrides individuais da workstation (máxima prioridade).
+    """
+    rules: dict[str, str] = {}
+
+    # 1. Políticas globais ativas
+    global_qs = SitePolicy.all_tenants.filter(is_global=True, active=True)
+    if agent_token.tenant_id is not None:
+        global_qs = global_qs.filter(
+            models.Q(tenant_id=agent_token.tenant_id) | models.Q(tenant__isnull=True)
+        )
+    for policy in global_qs.prefetch_related("rules"):
+        for r in policy.rules.all():
+            rules[r.domain] = r.action
+
+    # 2. Políticas atribuídas à workstation (mais prioridade)
+    wpolicies = (
+        WorkstationPolicy.objects.filter(
+            agent_token=agent_token, site_policy__active=True
+        )
+        .select_related("site_policy")
+        .prefetch_related("site_policy__rules")
+    )
+    for wp in wpolicies:
+        for r in wp.site_policy.rules.all():
+            rules[r.domain] = r.action
+        for o in (wp.override_rules or []):
+            d = o.get("domain")
+            a = o.get("action")
+            if d and a:
+                rules[d] = a
+
+    return rules
+
+

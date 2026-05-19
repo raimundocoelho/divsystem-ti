@@ -1,0 +1,136 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Sites Bloqueados{% endblock %}
+{% block page_title %}Sites Bloqueados{% endblock %}
+
+{% block breadcrumb %}
+  <span class="crumb-sep">/</span>
+  <span>Sites Bloqueados</span>
+{% endblock %}
+
+{% block content %}
+<div x-data="{
+  showForm: false,
+  editing: { id: '', domain: '', reason: '' },
+  open(s) { this.editing = s; this.showForm = true; },
+  openNew() { this.editing = { id: '', domain: '', reason: '' }; this.showForm = true; },
+}" class="space-y-4">
+
+  <div class="flex items-end gap-3">
+    <div class="flex-1">
+      <p class="text-sm text-slate-500">
+        Lista global de domínios bloqueados nas workstations deste tenant (somado às regras das políticas).
+      </p>
+    </div>
+    <button @click="openNew()" class="btn-primary text-sm">
+      {% icon "lucide:plus" "1em" %}<span>Adicionar Site</span>
+    </button>
+  </div>
+
+  <div class="grid gap-3 sm:grid-cols-3">
+    <div class="card p-4">
+      <p class="text-xs uppercase tracking-wide text-slate-400">Total</p>
+      <p class="text-2xl font-semibold mt-1">{{ total }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs uppercase tracking-wide text-slate-400">Ativos</p>
+      <p class="text-2xl font-semibold mt-1 text-emerald-600">{{ ativos }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs uppercase tracking-wide text-slate-400">Inativos</p>
+      <p class="text-2xl font-semibold mt-1 text-red-500">{{ inativos }}</p>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+          <th class="px-4 py-2 font-semibold">Domínio</th>
+          <th class="px-4 py-2 font-semibold">Motivo</th>
+          <th class="px-4 py-2 font-semibold">Status</th>
+          <th class="px-4 py-2 font-semibold text-right">Ações</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for s in sites %}
+        <tr>
+          <td class="px-4 py-2 font-mono text-slate-700">{{ s.domain }}</td>
+          <td class="px-4 py-2 text-slate-500">{{ s.reason|default:"—" }}</td>
+          <td class="px-4 py-2">
+            {% if s.active %}
+              <span class="pill pill-aceito">Ativo</span>
+            {% else %}
+              <span class="pill pill-ignorado">Inativo</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2">
+            <div class="flex justify-end gap-1">
+              <form method="post" action="{% url 'agentes:sites_bloqueados_toggle' s.pk %}" class="inline">
+                {% csrf_token %}
+                <button class="btn-ghost !p-1.5" title="{% if s.active %}Pausar{% else %}Ativar{% endif %}">
+                  {% if s.active %}{% icon "lucide:pause" "1em" %}{% else %}{% icon "lucide:play" "1em" %}{% endif %}
+                </button>
+              </form>
+              <button class="btn-ghost !p-1.5" title="Editar"
+                      @click='open({ id: {{ s.pk }}, domain: "{{ s.domain|escapejs }}", reason: "{{ s.reason|escapejs }}" })'>
+                {% icon "lucide:pencil" "1em" %}
+              </button>
+              <form method="post" action="{% url 'agentes:sites_bloqueados_delete' s.pk %}" class="inline"
+                    onsubmit="return confirm('Excluir &quot;{{ s.domain|escapejs }}&quot; permanentemente?');">
+                {% csrf_token %}
+                <button class="btn-ghost !p-1.5 text-red-600" title="Excluir">
+                  {% icon "lucide:trash-2" "1em" %}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="px-4 py-10 text-center text-slate-400">
+            {% icon "lucide:globe" "2em" "text-slate-300 mx-auto" %}
+            <p class="mt-2 text-sm">Nenhum site bloqueado. Clique em "Adicionar Site" para começar.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ============== Modal: Form ============== #}
+  <div x-show="showForm" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50"
+       @keydown.escape.window="showForm = false">
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md" @click.outside="showForm = false">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+          <h3 class="font-semibold" x-text="editing.id ? 'Editar Site Bloqueado' : 'Adicionar Site Bloqueado'"></h3>
+          <button @click="showForm = false" class="text-slate-400 hover:text-slate-600">
+            {% icon "lucide:x" "1.2em" %}
+          </button>
+        </div>
+        <form method="post" action="{% url 'agentes:sites_bloqueados_save' %}" class="p-5 space-y-3">
+          {% csrf_token %}
+          <input type="hidden" name="id" :value="editing.id">
+          <div>
+            <label class="label">Domínio</label>
+            <input type="text" name="domain" required maxlength="255" class="input"
+                   placeholder="Ex: facebook.com, youtube.com..."
+                   x-model="editing.domain">
+          </div>
+          <div>
+            <label class="label">Motivo</label>
+            <input type="text" name="reason" maxlength="500" class="input"
+                   placeholder="Ex: Produtividade, Política da empresa..."
+                   x-model="editing.reason">
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" @click="showForm = false" class="btn-ghost text-sm">Cancelar</button>
+            <button type="submit" class="btn-primary text-sm" x-text="editing.id ? 'Salvar' : 'Adicionar'"></button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

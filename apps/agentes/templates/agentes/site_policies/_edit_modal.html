@@ -1,0 +1,29 @@
+{% load divsystem %}
+<div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+  <h3 class="font-semibold">Editar Política</h3>
+  <button @click="showEdit = false" class="text-slate-400 hover:text-slate-600">
+    {% icon "lucide:x" "1.2em" %}
+  </button>
+</div>
+<form method="post" action="{% url 'agentes:politica_edit' p.pk %}" class="p-5 space-y-3">
+  {% csrf_token %}
+  <div>
+    <label class="label">Nome</label>
+    <input type="text" name="name" required maxlength="100" class="input" value="{{ p.name }}">
+  </div>
+  <div>
+    <label class="label">Descrição</label>
+    <input type="text" name="description" maxlength="500" class="input" value="{{ p.description }}">
+  </div>
+  <label class="flex items-start gap-2 text-sm cursor-pointer">
+    <input type="checkbox" name="is_global" class="mt-0.5" {% if p.is_global %}checked{% endif %}>
+    <span>
+      <span class="font-medium">Política Global</span>
+      <span class="block text-xs text-slate-500">Aplica automaticamente a todas as workstations do tenant</span>
+    </span>
+  </label>
+  <div class="flex justify-end gap-2 pt-2">
+    <button type="button" @click="showEdit = false" class="btn-ghost text-sm">Cancelar</button>
+    <button type="submit" class="btn-primary text-sm">Salvar</button>
+  </div>
+</form>

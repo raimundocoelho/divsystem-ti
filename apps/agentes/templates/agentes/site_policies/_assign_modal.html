@@ -1,0 +1,38 @@
+{% load divsystem %}
+<div class="p-5 space-y-4">
+  <div>
+    <h3 class="text-lg font-semibold">Atribuir Política a Workstations</h3>
+    <p class="text-sm text-slate-500">
+      Marque as workstations que devem usar a política <strong>{{ p.name }}</strong>.
+      Políticas globais são aplicadas automaticamente a todas.
+    </p>
+  </div>
+
+  {% if agents %}
+    <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+      {% for a in agents %}
+      <form method="post"
+            action="{% url 'agentes:politica_toggle_alvo' p.pk a.pk %}"
+            hx-post="{% url 'agentes:politica_toggle_alvo' p.pk a.pk %}"
+            hx-target="#assign-modal-body"
+            hx-swap="innerHTML"
+            class="block">
+        {% csrf_token %}
+        <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left">
+          <input type="checkbox" {% if a.pk in assigned_ids %}checked{% endif %} class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 pointer-events-none">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-slate-700 truncate">
+              {{ a.hostname|default:a.name }}
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono truncate">{{ a.machine_id|default:"sem machine_id" }}</div>
+          </div>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-slate-400 text-center py-4 border border-slate-200 rounded-lg">
+      Nenhuma workstation ativa.
+    </p>
+  {% endif %}
+</div>

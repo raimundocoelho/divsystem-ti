@@ -1,0 +1,113 @@
+{% load divsystem %}
+<div class="p-5 space-y-5">
+  <div>
+    <h3 class="text-lg font-semibold">Regras: {{ p.name }}</h3>
+    <p class="text-sm text-slate-500">Configure categorias prontas e domínios individuais.</p>
+  </div>
+
+  {# ─── Categorias ─── #}
+  <div>
+    <p class="text-sm font-medium text-slate-700 mb-2">Categorias</p>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      {% for c in categorias %}
+        <form method="post"
+              action="{% url 'agentes:politica_toggle_categoria' p.pk c.key %}"
+              hx-post="{% url 'agentes:politica_toggle_categoria' p.pk c.key %}"
+              hx-target="#rules-modal-body"
+              hx-swap="innerHTML">
+          {% csrf_token %}
+          <button type="submit"
+                  class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border-2 transition text-left
+                         {% if c.active %}border-red-500 bg-red-50 text-red-700{% else %}border-slate-200 bg-white text-slate-600 hover:border-slate-300{% endif %}">
+            <div>
+              <div class="text-sm font-medium">{{ c.label }}</div>
+              <div class="text-[11px] {% if c.active %}text-red-500{% else %}text-slate-400{% endif %}">
+                {{ c.count }} domínios
+              </div>
+            </div>
+            {% if c.active %}
+              {% icon "lucide:shield-alert" "1.1em" "text-red-500" %}
+            {% else %}
+              {% icon "lucide:shield-check" "1.1em" "text-slate-300" %}
+            {% endif %}
+          </button>
+        </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ─── Adicionar regra individual ─── #}
+  <div>
+    <p class="text-sm font-medium text-slate-700 mb-2">Regra Individual</p>
+    <form method="post"
+          action="{% url 'agentes:politica_add_regra' p.pk %}"
+          hx-post="{% url 'agentes:politica_add_regra' p.pk %}"
+          hx-target="#rules-modal-body"
+          hx-swap="innerHTML"
+          class="flex gap-2">
+      {% csrf_token %}
+      <input type="text" name="domain" placeholder="Ex: facebook.com" class="input text-sm flex-1" required>
+      <select name="action" class="input text-sm w-32">
+        <option value="block">Bloquear</option>
+        <option value="allow">Liberar</option>
+      </select>
+      <button type="submit" class="btn-primary text-sm">
+        {% icon "lucide:plus" "0.9em" %}<span>Adicionar</span>
+      </button>
+    </form>
+  </div>
+
+  {# ─── Lista de regras atuais ─── #}
+  <div>
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-sm font-medium text-slate-700">Regras ativas ({{ rules|length }})</p>
+      <form method="get"
+            hx-get="{% url 'agentes:politica_rules_modal' p.pk %}"
+            hx-target="#rules-modal-body"
+            hx-swap="innerHTML"
+            hx-trigger="input changed delay:300ms from:input, submit"
+            class="flex">
+        <input type="text" name="q" value="{{ busca }}" placeholder="Buscar domínio..." class="input text-sm w-48">
+      </form>
+    </div>
+
+    {% if rules %}
+      <div class="max-h-64 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+        {% for r in rules %}
+        <div class="flex items-center justify-between px-3 py-2 hover:bg-slate-50">
+          <div class="flex items-center gap-2 min-w-0">
+            {% if r.action == 'block' %}
+              <span class="pill pill-rejeitado">Bloqueado</span>
+            {% else %}
+              <span class="pill pill-aceito">Liberado</span>
+            {% endif %}
+            <span class="text-sm text-slate-700 font-mono truncate">{{ r.domain }}</span>
+            {% if r.category %}
+              <span class="text-[11px] text-slate-400">({{ r.category_label }})</span>
+            {% endif %}
+          </div>
+          <form method="post"
+                action="{% url 'agentes:politica_del_regra' p.pk r.pk %}"
+                hx-post="{% url 'agentes:politica_del_regra' p.pk r.pk %}"
+                hx-target="#rules-modal-body"
+                hx-swap="innerHTML"
+                class="inline">
+            {% csrf_token %}
+            <button type="submit" class="text-slate-400 hover:text-red-500 transition p-1" title="Remover">
+              {% icon "lucide:x" "1em" %}
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-sm text-slate-400 text-center py-4 border border-slate-200 rounded-lg">
+        {% if busca %}
+          Nenhum domínio encontrado para "{{ busca }}"
+        {% else %}
+          Nenhuma regra. Use as categorias acima ou adicione domínios individuais.
+        {% endif %}
+      </p>
+    {% endif %}
+  </div>
+</div>
