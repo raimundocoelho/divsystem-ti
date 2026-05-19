@@ -1,0 +1,74 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Viagens SIM Saúde{% endblock %}
+{% block page_title %}Viagens SIM Saúde{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Viagens SIM Saúde</h1>
+      <p class="mt-1 text-sm text-slate-500">Gestão das viagens municipais com pacientes embarcados.</p>
+    </div>
+    <a href="{% url 'transporte:viagem_create' %}" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:plus" "1em" %} Nova viagem</a>
+  </div>
+
+  <div class="card">
+    <header class="card-header">
+      <form method="get" class="grid grid-cols-1 sm:grid-cols-[1fr_180px_140px_140px_auto] gap-2 flex-1 items-end">
+        <input class="input" type="search" name="q" placeholder="Motorista, placa, cidade..." value="{{ search }}">
+        <select class="input" name="status">
+          <option value="">Todos os status</option>
+          {% for v, label in status_choices %}<option value="{{ v }}" {% if status_filter == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <input class="input" type="date" name="data_inicio" value="{{ data_inicio }}">
+        <input class="input" type="date" name="data_fim" value="{{ data_fim }}">
+        <button type="submit" class="btn-primary">Filtrar</button>
+      </form>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Data</th><th>Destino</th><th>Veículo</th><th>Motorista</th><th>Passageiros</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+        <tbody>
+          {% for v in viagens %}
+          <tr class="bg-white">
+            <td>
+              <div class="font-mono text-sm text-slate-800">{{ v.data|date:"d/m/Y" }}</div>
+              {% if v.hora_saida %}<div class="text-xs text-slate-400">{{ v.hora_saida|time:"H:i" }}</div>{% endif %}
+            </td>
+            <td class="font-medium text-slate-800">{{ v.cidade_destino.nome }}/{{ v.cidade_destino.uf }}</td>
+            <td><span class="font-mono text-xs">{{ v.veiculo.placa }}</span><div class="text-xs text-slate-400">{{ v.veiculo.modelo }}</div></td>
+            <td class="text-sm">{{ v.motorista.nome }}</td>
+            <td class="text-center">{{ v.passageiros.count }}</td>
+            <td>
+              {% with s=v.status %}
+              <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1
+                {% if s == 'agendada' %}bg-slate-50 ring-slate-200 text-slate-700
+                {% elif s == 'em_andamento' %}bg-blue-50 ring-blue-200 text-blue-700
+                {% elif s == 'concluida' %}bg-emerald-50 ring-emerald-200 text-emerald-700
+                {% elif s == 'cancelada' %}bg-red-50 ring-red-200 text-red-700{% endif %}">
+                {{ v.get_status_display }}
+              </span>
+              {% endwith %}
+            </td>
+            <td class="text-right">
+              <a href="{% url 'transporte:viagem_detail' v.pk %}" class="btn-secondary !py-1 !px-2 text-xs" title="Ver">{% icon "lucide:eye" "0.9em" %}</a>
+              <a href="{% url 'transporte:viagem_edit' v.pk %}" class="btn-secondary !py-1 !px-2 text-xs" title="Editar">{% icon "lucide:pencil" "0.9em" %}</a>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="7" class="text-center text-slate-400 py-10">Nenhuma viagem agendada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm">
+      <span class="text-slate-500">{{ page.paginator.count }} viagens · página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+      <div class="flex gap-1">
+        {% if page.has_previous %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.previous_page_number }}">Anterior</a>{% endif %}
+        {% if page.has_next %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.next_page_number }}">Próxima</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

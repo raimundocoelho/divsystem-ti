@@ -1,0 +1,58 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Locais de Atendimento{% endblock %}
+{% block page_title %}Locais de Atendimento{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ open: {% if show_modal %}true{% else %}false{% endif %} }">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Locais de Atendimento</h1>
+      <p class="mt-1 text-sm text-slate-500">Hospitais e clínicas em cada cidade-destino.</p>
+    </div>
+    <a href="?novo=1" @click.prevent="open = true" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:plus" "1em" %} Novo local</a>
+  </div>
+
+  <div class="card">
+    <header class="card-header"><form method="get" class="flex flex-1"><input class="input max-w-xs" type="search" name="q" placeholder="Buscar..." value="{{ search }}"></form></header>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Local</th><th>Cidade</th><th>Endereço</th><th>Telefone</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+        <tbody>
+          {% for l in items %}
+          <tr class="bg-white">
+            <td class="font-medium text-slate-800">{{ l.nome }}</td>
+            <td class="text-slate-600">{{ l.cidade_destino.nome }}/{{ l.cidade_destino.uf }}</td>
+            <td class="text-slate-600 text-sm">{{ l.endereco|default:"—" }}</td>
+            <td class="text-slate-600 font-mono text-sm">{{ l.telefone|default:"—" }}</td>
+            <td>{% if l.ativo %}<span class="inline-flex rounded-full bg-emerald-50 ring-1 ring-emerald-200 px-2 py-0.5 text-xs text-emerald-700">Ativo</span>{% else %}<span class="inline-flex rounded-full bg-slate-50 ring-1 ring-slate-200 px-2 py-0.5 text-xs text-slate-700">Inativo</span>{% endif %}</td>
+            <td class="text-right">
+              <a href="?editar={{ l.pk }}" class="btn-secondary !py-1 !px-2 text-xs">{% icon "lucide:pencil" "0.9em" %}</a>
+              <form method="post" action="{% url 'transporte:local_atendimento_delete' l.pk %}" class="inline" onsubmit="return confirm('Excluir {{ l.nome|escapejs }}?');">
+                {% csrf_token %}<button type="submit" class="btn-danger !py-1 !px-2 text-xs">{% icon "lucide:trash-2" "0.9em" %}</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="6" class="text-center text-slate-400 py-10">Nenhum local cadastrado.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div x-show="open" x-cloak @keydown.escape.window="open = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" x-transition.opacity>
+    <div @click.outside="open = false" x-transition class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+      <form method="post" action="{% if editing %}{% url 'transporte:local_atendimento_save' editing.pk %}{% else %}{% url 'transporte:local_atendimento_create' %}{% endif %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        <div class="flex items-center justify-between"><h2 class="text-lg font-semibold text-slate-800">{% if editing %}Editar local{% else %}Novo local de atendimento{% endif %}</h2><button type="button" @click="open = false" class="text-slate-400 hover:text-slate-700">{% icon "lucide:x" "1.2em" %}</button></div>
+        <div><label class="label">Cidade-destino *</label>{{ form.cidade_destino }}{% for e in form.cidade_destino.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+        <div><label class="label">Nome *</label>{{ form.nome }}{% for e in form.nome.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+        <div><label class="label">Endereço</label>{{ form.endereco }}</div>
+        <div><label class="label">Telefone</label>{{ form.telefone }}</div>
+        <div><label class="label">Observação</label>{{ form.observacao }}</div>
+        <label class="inline-flex items-center gap-2 text-sm">{{ form.ativo }} Ativo</label>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100"><button type="button" @click="open = false" class="btn-secondary">Cancelar</button><button type="submit" class="btn-primary">{% icon "lucide:check" "1em" %} Salvar</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if editing %}Editar{% else %}Nova{% endif %} Viagem{% endblock %}
+{% block page_title %}{% if editing %}Editar Viagem{% else %}Nova Viagem SIM Saúde{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800">{% if editing %}Editar Viagem #{{ editing.pk }}{% else %}Nova Viagem SIM Saúde{% endif %}</h1>
+    <p class="mt-1 text-sm text-slate-500">{% if editing %}Ajuste os dados da viagem. Os passageiros são gerenciados na tela de detalhes.{% else %}Após criar a viagem, você poderá adicionar os passageiros.{% endif %}</p>
+  </div>
+
+  <form method="post" class="card p-6 space-y-5">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><label class="label">Data *</label>{{ form.data }}{% for e in form.data.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+      <div><label class="label">Hora de saída</label>{{ form.hora_saida }}</div>
+      <div><label class="label">Horário sugerido</label>{{ form.horario }}<p class="help">Opcional. Preenche a hora de saída.</p></div>
+      <div><label class="label">Tipo *</label>{{ form.tipo }}</div>
+      <div class="sm:col-span-2"><label class="label">Cidade-destino *</label>{{ form.cidade_destino }}{% for e in form.cidade_destino.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+      <div><label class="label">Veículo *</label>{{ form.veiculo }}{% for e in form.veiculo.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+      <div><label class="label">Motorista *</label>{{ form.motorista }}{% for e in form.motorista.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+      {% if editing %}
+      <div><label class="label">Status</label>{{ form.status }}</div>
+      {% endif %}
+      <div class="sm:col-span-2"><label class="label">Observações</label>{{ form.observacoes }}</div>
+    </div>
+
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <a href="{% if editing %}{% url 'transporte:viagem_detail' editing.pk %}{% else %}{% url 'transporte:viagem_list' %}{% endif %}" class="btn-secondary">Cancelar</a>
+      <button type="submit" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:check" "1em" %} {% if editing %}Salvar Alterações{% else %}Criar Viagem{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

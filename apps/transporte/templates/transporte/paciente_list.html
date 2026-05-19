@@ -1,0 +1,88 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Pacientes{% endblock %}
+{% block page_title %}Pacientes{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ open: {% if show_modal %}true{% else %}false{% endif %} }">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Pacientes</h1>
+      <p class="mt-1 text-sm text-slate-500">Cadastro dos pacientes atendidos pelo SIM Saúde.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/admin/django/transporte/paciente/" class="btn-secondary inline-flex items-center gap-2">{% icon "lucide:upload" "1em" %} Importar (CSV)</a>
+      <a href="?novo=1" @click.prevent="open = true" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:plus" "1em" %} Novo paciente</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <header class="card-header">
+      <form method="get" class="flex flex-1 gap-2">
+        <input class="input max-w-xs" type="search" name="q" placeholder="Nome, CPF, CNS, telefone..." value="{{ search }}">
+        <select class="input max-w-[200px]" name="unidade">
+          <option value="">Todas as unidades</option>
+          {% for u in unidades %}<option value="{{ u }}" {% if unidade == u %}selected{% endif %}>{{ u }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn-primary">Filtrar</button>
+      </form>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Nome</th><th>CPF</th><th>CNS</th><th>Telefone</th><th>Unidade / Equipe</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+        <tbody>
+          {% for p in pacientes %}
+          <tr class="bg-white">
+            <td class="font-medium text-slate-800">{{ p.nome }}{% if p.data_nascimento %}<div class="text-xs text-slate-400">{{ p.data_nascimento|date:"d/m/Y" }}{% if p.sexo %} · {{ p.sexo }}{% endif %}</div>{% endif %}</td>
+            <td class="font-mono text-sm">{{ p.cpf|default:"—" }}</td>
+            <td class="font-mono text-sm">{{ p.cns|default:"—" }}</td>
+            <td class="font-mono text-sm">{{ p.telefone|default:"—" }}</td>
+            <td class="text-sm">{{ p.unidade|default:"—" }}{% if p.equipe %}<div class="text-xs text-slate-500">{{ p.equipe }}{% if p.microarea %} · MA {{ p.microarea }}{% endif %}</div>{% endif %}</td>
+            <td>{% if p.ativo %}<span class="inline-flex rounded-full bg-emerald-50 ring-1 ring-emerald-200 px-2 py-0.5 text-xs text-emerald-700">Ativo</span>{% else %}<span class="inline-flex rounded-full bg-slate-50 ring-1 ring-slate-200 px-2 py-0.5 text-xs text-slate-700">Inativo</span>{% endif %}</td>
+            <td class="text-right">
+              <a href="?editar={{ p.pk }}" class="btn-secondary !py-1 !px-2 text-xs">{% icon "lucide:pencil" "0.9em" %}</a>
+              <form method="post" action="{% url 'transporte:paciente_delete' p.pk %}" class="inline" onsubmit="return confirm('Excluir {{ p.nome|escapejs }}?');">{% csrf_token %}<button type="submit" class="btn-danger !py-1 !px-2 text-xs">{% icon "lucide:trash-2" "0.9em" %}</button></form>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="7" class="text-center text-slate-400 py-10">Nenhum paciente cadastrado.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm">
+      <span class="text-slate-500">{{ page.paginator.count }} pacientes · página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+      <div class="flex gap-1">
+        {% if page.has_previous %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.previous_page_number }}">Anterior</a>{% endif %}
+        {% if page.has_next %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.next_page_number }}">Próxima</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div x-show="open" x-cloak @keydown.escape.window="open = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" x-transition.opacity>
+    <div @click.outside="open = false" x-transition class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <form method="post" action="{% if editing %}{% url 'transporte:paciente_save' editing.pk %}{% else %}{% url 'transporte:paciente_create' %}{% endif %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        <div class="flex items-center justify-between"><h2 class="text-lg font-semibold text-slate-800">{% if editing %}Editar paciente{% else %}Novo paciente{% endif %}</h2><button type="button" @click="open = false" class="text-slate-400 hover:text-slate-700">{% icon "lucide:x" "1.2em" %}</button></div>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="sm:col-span-2 lg:col-span-3"><label class="label">Nome *</label>{{ form.nome }}{% for e in form.nome.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+          <div><label class="label">CPF</label>{{ form.cpf }}{% for e in form.cpf.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+          <div><label class="label">CNS</label>{{ form.cns }}{% for e in form.cns.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+          <div><label class="label">Telefone</label>{{ form.telefone }}</div>
+          <div><label class="label">Data nascimento</label>{{ form.data_nascimento }}</div>
+          <div><label class="label">Sexo</label>{{ form.sexo }}</div>
+          <div><label class="label">Secretaria</label>{{ form.secretaria }}</div>
+          <div class="lg:col-span-2"><label class="label">Endereço</label>{{ form.endereco }}</div>
+          <div><label class="label">Bairro</label>{{ form.bairro }}</div>
+          <div><label class="label">Unidade (UBS/ESF)</label>{{ form.unidade }}</div>
+          <div><label class="label">Equipe</label>{{ form.equipe }}</div>
+          <div><label class="label">Microárea</label>{{ form.microarea }}</div>
+          <div class="sm:col-span-2 lg:col-span-3"><label class="label">Observação</label>{{ form.observacao }}</div>
+          <label class="inline-flex items-center gap-2 text-sm">{{ form.ativo }} Ativo</label>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100"><button type="button" @click="open = false" class="btn-secondary">Cancelar</button><button type="submit" class="btn-primary">{% icon "lucide:check" "1em" %} Salvar</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

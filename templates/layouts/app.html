@@ -83,28 +83,28 @@
 
       {# ── Transporte ── #}
       <p class="sidebar-section">Transporte</p>
-      <a href="/admin/django/transporte/viagemtransporte/" class="nav-link {% active_url '/admin/django/transporte/viagemtransporte/' %}">
+      <a href="{% url 'transporte:viagem_list' %}" class="nav-link {% active_url '/admin/transporte/viagens' %}">
         {% icon "lucide:bus" "1.1em" %}<span>Viagens SIM Saúde</span>
       </a>
-      <a href="/admin/django/transporte/protocoloexame/" class="nav-link {% active_url '/admin/django/transporte/protocoloexame/' %}">
+      <a href="{% url 'transporte:protocolo_list' %}" class="nav-link {% active_url '/admin/transporte/protocolos' %}">
         {% icon "lucide:clipboard-list" "1.1em" %}<span>Protocolos de Exame</span>
       </a>
-      <a href="/admin/django/transporte/paciente/" class="nav-link {% active_url '/admin/django/transporte/paciente/' %}">
+      <a href="{% url 'transporte:paciente_list' %}" class="nav-link {% active_url '/admin/transporte/pacientes' %}">
         {% icon "lucide:user" "1.1em" %}<span>Pacientes</span>
       </a>
-      <a href="/admin/django/transporte/motorista/" class="nav-link {% active_url '/admin/django/transporte/motorista/' %}">
+      <a href="{% url 'transporte:motorista_list' %}" class="nav-link {% active_url '/admin/transporte/motoristas' %}">
         {% icon "lucide:steering-wheel" "1.1em" %}<span>Motoristas</span>
       </a>
-      <a href="/admin/django/transporte/cidadedestino/" class="nav-link {% active_url '/admin/django/transporte/cidadedestino/' %}">
+      <a href="{% url 'transporte:cidade_list' %}" class="nav-link {% active_url '/admin/transporte/cidades' %}">
         {% icon "lucide:map" "1.1em" %}<span>Cidades-destino</span>
       </a>
-      <a href="/admin/django/transporte/localatendimento/" class="nav-link {% active_url '/admin/django/transporte/localatendimento/' %}">
+      <a href="{% url 'transporte:local_atendimento_list' %}" class="nav-link {% active_url '/admin/transporte/locais-atendimento' %}">
         {% icon "lucide:hospital" "1.1em" %}<span>Locais de atendimento</span>
       </a>
-      <a href="/admin/django/transporte/localembarque/" class="nav-link {% active_url '/admin/django/transporte/localembarque/' %}">
+      <a href="{% url 'transporte:local_embarque_list' %}" class="nav-link {% active_url '/admin/transporte/locais-embarque' %}">
         {% icon "lucide:bus-front" "1.1em" %}<span>Locais de embarque</span>
       </a>
-      <a href="/admin/django/transporte/horariotransporte/" class="nav-link {% active_url '/admin/django/transporte/horariotransporte/' %}">
+      <a href="{% url 'transporte:horario_list' %}" class="nav-link {% active_url '/admin/transporte/horarios' %}">
         {% icon "lucide:clock-3" "1.1em" %}<span>Horários sugeridos</span>
       </a>
       {% endif %}

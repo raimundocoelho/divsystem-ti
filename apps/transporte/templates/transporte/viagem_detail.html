@@ -1,0 +1,121 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Viagem #{{ v.pk }}{% endblock %}
+{% block page_title %}Viagem #{{ v.pk }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ addOpen: false }">
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="font-mono text-xs text-slate-400">Viagem #{{ v.pk }}</p>
+      <h1 class="text-2xl font-semibold text-slate-800">{{ v.cidade_destino.nome }}/{{ v.cidade_destino.uf }}</h1>
+      <p class="mt-1 text-sm text-slate-500">
+        {{ v.data|date:"l, d/m/Y" }}{% if v.hora_saida %} · saída {{ v.hora_saida|time:"H:i" }}{% endif %}
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'transporte:viagem_list' %}" class="btn-secondary inline-flex items-center gap-1">{% icon "lucide:arrow-left" "1em" %} Voltar</a>
+      <a href="{% url 'transporte:viagem_edit' v.pk %}" class="btn-primary inline-flex items-center gap-1">{% icon "lucide:pencil" "1em" %} Editar</a>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <div class="card p-6 lg:col-span-2 space-y-4">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">Dados da viagem</h2>
+      <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
+        <div><dt class="text-slate-500">Veículo</dt><dd class="text-slate-800 font-medium">{{ v.veiculo.placa }} — {{ v.veiculo.modelo }}</dd></div>
+        <div><dt class="text-slate-500">Motorista</dt><dd class="text-slate-800">{{ v.motorista.nome }}</dd></div>
+        <div><dt class="text-slate-500">CNH motorista</dt><dd class="font-mono text-slate-700">{{ v.motorista.cnh }} ({{ v.motorista.cnh_categoria }})</dd></div>
+        <div><dt class="text-slate-500">Horário sugerido</dt><dd class="text-slate-800">{{ v.horario|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Tipo</dt><dd class="text-slate-800">{{ v.get_tipo_display }}</dd></div>
+        <div><dt class="text-slate-500">Criado por</dt><dd class="text-slate-800">{{ v.criado_por.name|default:"—" }}</dd></div>
+      </dl>
+      {% if v.observacoes %}
+      <div class="pt-3 border-t border-slate-100">
+        <dt class="text-slate-500 text-sm">Observações</dt>
+        <dd class="text-slate-700 text-sm whitespace-pre-line mt-1">{{ v.observacoes }}</dd>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card p-6 space-y-4">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">Status</h2>
+      <div>
+        {% with s=v.status %}
+        <span class="inline-flex rounded-full px-3 py-1 text-sm font-medium ring-1
+          {% if s == 'agendada' %}bg-slate-50 ring-slate-200 text-slate-700
+          {% elif s == 'em_andamento' %}bg-blue-50 ring-blue-200 text-blue-700
+          {% elif s == 'concluida' %}bg-emerald-50 ring-emerald-200 text-emerald-700
+          {% elif s == 'cancelada' %}bg-red-50 ring-red-200 text-red-700{% endif %}">
+          {{ v.get_status_display }}
+        </span>
+        {% endwith %}
+      </div>
+      <form method="post" action="{% url 'transporte:viagem_status' v.pk %}" class="space-y-2">
+        {% csrf_token %}
+        <label class="label">Alterar status</label>
+        <div class="flex gap-2">
+          <select class="input" name="status">
+            <option value="agendada" {% if v.status == 'agendada' %}selected{% endif %}>Agendada</option>
+            <option value="em_andamento" {% if v.status == 'em_andamento' %}selected{% endif %}>Em andamento</option>
+            <option value="concluida" {% if v.status == 'concluida' %}selected{% endif %}>Concluída</option>
+            <option value="cancelada" {% if v.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+          </select>
+          <button type="submit" class="btn-primary">OK</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <header class="card-header">
+      <div>
+        <h2 class="text-base font-semibold text-slate-800">Passageiros ({{ passageiros|length }})</h2>
+        <p class="text-xs text-slate-500">Pacientes embarcados e seus locais de atendimento.</p>
+      </div>
+      <button type="button" @click="addOpen = !addOpen" class="btn-primary inline-flex items-center gap-2">
+        {% icon "lucide:user-plus" "1em" %} Adicionar passageiro
+      </button>
+    </header>
+
+    <div x-show="addOpen" x-cloak x-transition class="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+      <form method="post" action="{% url 'transporte:viagem_add_passageiro' v.pk %}" class="grid gap-3 sm:grid-cols-2">
+        {% csrf_token %}
+        <div class="sm:col-span-2"><label class="label">Paciente *</label>{{ passageiro_form.paciente }}</div>
+        <div><label class="label">Acompanhante</label>{{ passageiro_form.acompanhante }}</div>
+        <div><label class="label">Local de atendimento</label>{{ passageiro_form.local_atendimento }}</div>
+        <div><label class="label">Local de embarque</label>{{ passageiro_form.local_embarque }}</div>
+        <div><label class="label">Finalidade *</label>{{ passageiro_form.finalidade }}</div>
+        <div class="sm:col-span-2"><label class="label">Observação</label>{{ passageiro_form.observacao }}</div>
+        <div class="sm:col-span-2 flex justify-end gap-2">
+          <button type="button" @click="addOpen = false" class="btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-primary inline-flex items-center gap-1">{% icon "lucide:plus" "1em" %} Adicionar</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Paciente</th><th>Acompanhante</th><th>Local de atendimento</th><th>Embarque</th><th>Finalidade</th><th class="text-right">Ações</th></tr></thead>
+        <tbody>
+          {% for p in passageiros %}
+          <tr class="bg-white">
+            <td class="font-medium text-slate-800">{{ p.paciente.nome }}{% if p.paciente.cns %}<div class="text-xs font-mono text-slate-400">CNS {{ p.paciente.cns }}</div>{% endif %}</td>
+            <td class="text-sm">{{ p.acompanhante.nome|default:"—" }}</td>
+            <td class="text-sm">{{ p.local_atendimento.nome|default:"—" }}</td>
+            <td class="text-sm">{{ p.local_embarque.nome|default:"—" }}</td>
+            <td class="text-sm text-slate-700">{{ p.finalidade }}</td>
+            <td class="text-right">
+              <form method="post" action="{% url 'transporte:viagem_remove_passageiro' v.pk p.pk %}" class="inline" onsubmit="return confirm('Remover {{ p.paciente.nome|escapejs }} da viagem?');">
+                {% csrf_token %}<button type="submit" class="btn-danger !py-1 !px-2 text-xs">{% icon "lucide:trash-2" "0.9em" %}</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="6" class="text-center text-slate-400 py-10">Nenhum passageiro adicionado ainda.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

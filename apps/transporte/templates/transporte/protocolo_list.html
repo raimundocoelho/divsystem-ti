@@ -1,0 +1,77 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Protocolos de Exame{% endblock %}
+{% block page_title %}Protocolos de Exame{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Protocolos de Exame</h1>
+      <p class="mt-1 text-sm text-slate-500">Controle de exames/laudos coletados na cidade-destino e entregues ao paciente.</p>
+    </div>
+    <a href="{% url 'transporte:protocolo_create' %}" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:plus" "1em" %} Novo Protocolo</a>
+  </div>
+
+  <div class="card">
+    <header class="card-header">
+      <form method="get" class="flex flex-1 gap-2">
+        <input class="input max-w-xs" type="search" name="q" placeholder="Paciente, descrição, número..." value="{{ search }}">
+        <select class="input max-w-[200px]" name="status">
+          <option value="">Todos os status</option>
+          {% for v, label in status_choices %}<option value="{{ v }}" {% if status_filter == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <select class="input max-w-[160px]" name="tipo">
+          <option value="">Todos os tipos</option>
+          {% for v, label in tipo_choices %}<option value="{{ v }}" {% if tipo_filter == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn-primary">Filtrar</button>
+      </form>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Paciente</th><th>Tipo</th><th>Descrição</th><th>Local</th><th>Previsão</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+        <tbody>
+          {% for p in protocolos %}
+          <tr class="bg-white">
+            <td class="font-medium text-slate-800">{{ p.paciente.nome }}</td>
+            <td><span class="inline-flex rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{{ p.get_tipo_display }}</span></td>
+            <td>{{ p.descricao }}{% if p.numero_protocolo %}<div class="text-xs font-mono text-slate-400">{{ p.numero_protocolo }}</div>{% endif %}</td>
+            <td class="text-sm text-slate-600">{{ p.local_atendimento.nome|default:"—" }}</td>
+            <td class="font-mono text-sm">{{ p.previsao_retirada|date:"d/m/Y"|default:"—" }}</td>
+            <td>
+              {% with s=p.status %}
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1
+                {% if s == 'aguardando_retirada' %}bg-amber-50 ring-amber-200 text-amber-700
+                {% elif s == 'aguardando_entrega' %}bg-blue-50 ring-blue-200 text-blue-700
+                {% elif s == 'entregue' %}bg-emerald-50 ring-emerald-200 text-emerald-700
+                {% else %}bg-slate-50 ring-slate-200 text-slate-700{% endif %}">
+                {{ p.get_status_display }}
+              </span>
+              {% endwith %}
+            </td>
+            <td class="text-right">
+              {% if p.status == 'aguardando_retirada' %}
+              <form method="post" action="{% url 'transporte:protocolo_retirado' p.pk %}" class="inline" onsubmit="return confirm('Marcar como retirado?');">{% csrf_token %}<button type="submit" class="btn-secondary !py-1 !px-2 text-xs" title="Marcar retirado">{% icon "lucide:hand" "0.9em" %}</button></form>
+              {% elif p.status == 'aguardando_entrega' %}
+              <form method="post" action="{% url 'transporte:protocolo_entregue' p.pk %}" class="inline" onsubmit="var v = prompt('Entregue para (nome)?'); if (v === null) return false; this.entregue_para.value = v; return true;">{% csrf_token %}<input type="hidden" name="entregue_para"><button type="submit" class="btn-primary !py-1 !px-2 text-xs" title="Marcar entregue">{% icon "lucide:check-check" "0.9em" %}</button></form>
+              {% endif %}
+              <a href="{% url 'transporte:protocolo_edit' p.pk %}" class="btn-secondary !py-1 !px-2 text-xs" title="Editar">{% icon "lucide:pencil" "0.9em" %}</a>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="7" class="text-center text-slate-400 py-10">Nenhum protocolo registrado.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm">
+      <span class="text-slate-500">{{ page.paginator.count }} protocolos · página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+      <div class="flex gap-1">
+        {% if page.has_previous %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.previous_page_number }}">Anterior</a>{% endif %}
+        {% if page.has_next %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.next_page_number }}">Próxima</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

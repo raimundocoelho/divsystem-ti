@@ -1,0 +1,110 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Motoristas{% endblock %}
+{% block page_title %}Motoristas{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ open: {% if show_modal %}true{% else %}false{% endif %} }">
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Motoristas</h1>
+      <p class="mt-1 text-sm text-slate-500">Cadastro de motoristas com controle de CNH.</p>
+    </div>
+    <a href="?novo=1" @click.prevent="open = true" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:plus" "1em" %} Novo motorista</a>
+  </div>
+
+  {% if alertas.vencidas or alertas.a_vencer %}
+  <div class="grid gap-3 sm:grid-cols-2">
+    {% if alertas.vencidas %}
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4 flex items-center gap-3">
+      {% icon "lucide:alert-triangle" "1.5em" "text-red-600" %}
+      <div>
+        <p class="font-semibold text-red-800">{{ alertas.vencidas }} CNH{{ alertas.vencidas|pluralize }} vencida{{ alertas.vencidas|pluralize }}</p>
+        <a href="?cnh=vencida" class="text-xs text-red-700 hover:underline">Filtrar</a>
+      </div>
+    </div>
+    {% endif %}
+    {% if alertas.a_vencer %}
+    <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
+      {% icon "lucide:alert-circle" "1.5em" "text-amber-600" %}
+      <div>
+        <p class="font-semibold text-amber-800">{{ alertas.a_vencer }} a vencer em 30 dias</p>
+        <a href="?cnh=a_vencer" class="text-xs text-amber-700 hover:underline">Filtrar</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <header class="card-header">
+      <form method="get" class="flex flex-1 gap-2">
+        <input class="input max-w-xs" type="search" name="q" placeholder="Buscar nome ou CNH..." value="{{ search }}">
+        <select class="input max-w-[160px]" name="cnh">
+          <option value="todos" {% if filtro_cnh == 'todos' %}selected{% endif %}>Todas CNHs</option>
+          <option value="valida" {% if filtro_cnh == 'valida' %}selected{% endif %}>Válidas</option>
+          <option value="a_vencer" {% if filtro_cnh == 'a_vencer' %}selected{% endif %}>A vencer (30d)</option>
+          <option value="vencida" {% if filtro_cnh == 'vencida' %}selected{% endif %}>Vencidas</option>
+        </select>
+        <button type="submit" class="btn-primary">Filtrar</button>
+      </form>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Nome</th><th>CNH</th><th>Categoria</th><th>Validade</th><th>Telefone</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+        <tbody>
+          {% for m in motoristas %}
+          <tr class="bg-white">
+            <td class="font-medium text-slate-800">{{ m.nome }}{% if m.user %}<div class="text-xs text-slate-400">{{ m.user.email }}</div>{% endif %}</td>
+            <td class="font-mono text-sm">{{ m.cnh }}</td>
+            <td><span class="inline-flex rounded bg-slate-100 px-2 py-0.5 text-xs font-mono">{{ m.cnh_categoria }}</span></td>
+            <td>
+              {% if m.cnh_validade < hoje %}<span class="text-red-700 font-medium">{{ m.cnh_validade|date:"d/m/Y" }}</span><div class="text-xs text-red-500">Vencida</div>
+              {% elif m.cnh_validade <= limite_avenc %}<span class="text-amber-700">{{ m.cnh_validade|date:"d/m/Y" }}</span><div class="text-xs text-amber-500">A vencer</div>
+              {% else %}<span class="text-slate-700">{{ m.cnh_validade|date:"d/m/Y" }}</span>{% endif %}
+            </td>
+            <td class="font-mono text-sm">{{ m.telefone|default:"—" }}</td>
+            <td>{% if m.ativo %}<span class="inline-flex rounded-full bg-emerald-50 ring-1 ring-emerald-200 px-2 py-0.5 text-xs text-emerald-700">Ativo</span>{% else %}<span class="inline-flex rounded-full bg-slate-50 ring-1 ring-slate-200 px-2 py-0.5 text-xs text-slate-700">Inativo</span>{% endif %}</td>
+            <td class="text-right">
+              <a href="?editar={{ m.pk }}" class="btn-secondary !py-1 !px-2 text-xs">{% icon "lucide:pencil" "0.9em" %}</a>
+              <form method="post" action="{% url 'transporte:motorista_delete' m.pk %}" class="inline" onsubmit="return confirm('Excluir {{ m.nome|escapejs }}?');">{% csrf_token %}<button type="submit" class="btn-danger !py-1 !px-2 text-xs">{% icon "lucide:trash-2" "0.9em" %}</button></form>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="7" class="text-center text-slate-400 py-10">Nenhum motorista cadastrado.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm">
+      <span class="text-slate-500">{{ page.paginator.count }} motoristas · página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+      <div class="flex gap-1">
+        {% if page.has_previous %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.previous_page_number }}">Anterior</a>{% endif %}
+        {% if page.has_next %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.next_page_number }}">Próxima</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div x-show="open" x-cloak @keydown.escape.window="open = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" x-transition.opacity>
+    <div @click.outside="open = false" x-transition class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <form method="post" action="{% if editing %}{% url 'transporte:motorista_save' editing.pk %}{% else %}{% url 'transporte:motorista_create' %}{% endif %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        <div class="flex items-center justify-between"><h2 class="text-lg font-semibold text-slate-800">{% if editing %}Editar motorista{% else %}Novo motorista{% endif %}</h2><button type="button" @click="open = false" class="text-slate-400 hover:text-slate-700">{% icon "lucide:x" "1.2em" %}</button></div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2"><label class="label">Nome *</label>{{ form.nome }}{% for e in form.nome.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+          <div><label class="label">CPF</label>{{ form.cpf }}{% for e in form.cpf.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+          <div><label class="label">Telefone</label>{{ form.telefone }}</div>
+          <div><label class="label">CNH *</label>{{ form.cnh }}{% for e in form.cnh.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+          <div><label class="label">Categoria *</label>{{ form.cnh_categoria }}</div>
+          <div><label class="label">Validade CNH *</label>{{ form.cnh_validade }}{% for e in form.cnh_validade.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+          <div><label class="label">Usuário vinculado</label>{{ form.user }}<p class="help">Opcional. Permite ao motorista logar via link mágico.</p></div>
+          <div class="sm:col-span-2"><label class="label">Observação</label>{{ form.observacao }}</div>
+          <label class="inline-flex items-center gap-2 text-sm">{{ form.ativo }} Ativo</label>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100"><button type="button" @click="open = false" class="btn-secondary">Cancelar</button><button type="submit" class="btn-primary">{% icon "lucide:check" "1em" %} Salvar</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

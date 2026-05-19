@@ -1,0 +1,34 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if editing %}Editar{% else %}Novo{% endif %} Protocolo{% endblock %}
+{% block page_title %}{% if editing %}Editar Protocolo{% else %}Novo Protocolo de Exame{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800">{% if editing %}Editar Protocolo{% else %}Novo Protocolo de Exame{% endif %}</h1>
+    <p class="mt-1 text-sm text-slate-500">Coleta de exames/laudos para entrega futura ao paciente.</p>
+  </div>
+
+  <form method="post" class="card p-6 space-y-5">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="sm:col-span-2"><label class="label">Paciente *</label>{{ form.paciente }}{% for e in form.paciente.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+      <div><label class="label">Tipo *</label>{{ form.tipo }}</div>
+      <div><label class="label">Local de atendimento</label>{{ form.local_atendimento }}</div>
+      <div class="sm:col-span-2"><label class="label">Descrição *</label>{{ form.descricao }}{% for e in form.descricao.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+      <div><label class="label">Número do protocolo</label>{{ form.numero_protocolo }}</div>
+      <div><label class="label">Previsão de retirada</label>{{ form.previsao_retirada }}</div>
+      <div><label class="label">Viagem de origem (opcional)</label>{{ form.viagem_origem }}<p class="help">Viagem que coletou esse protocolo na cidade-destino.</p></div>
+      <div class="sm:col-span-2"><label class="label">Observações</label>{{ form.observacoes }}</div>
+    </div>
+
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <a href="{% url 'transporte:protocolo_list' %}" class="btn-secondary">Cancelar</a>
+      <button type="submit" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:check" "1em" %} {% if editing %}Atualizar{% else %}Cadastrar{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

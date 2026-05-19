@@ -1,0 +1,52 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Horários Sugeridos{% endblock %}
+{% block page_title %}Horários Sugeridos{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ open: {% if show_modal %}true{% else %}false{% endif %} }">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Horários Sugeridos</h1>
+      <p class="mt-1 text-sm text-slate-500">Presets de horário de saída usados nas viagens (ex: 05:30 — Madrugada).</p>
+    </div>
+    <a href="?novo=1" @click.prevent="open = true" class="btn-primary inline-flex items-center gap-2">{% icon "lucide:plus" "1em" %} Novo horário</a>
+  </div>
+
+  <div class="card">
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Ordem</th><th>Hora</th><th>Descrição</th><th>Status</th><th class="text-right">Ações</th></tr></thead>
+        <tbody>
+          {% for h in items %}
+          <tr class="bg-white">
+            <td class="text-slate-500 text-sm">{{ h.ordem }}</td>
+            <td class="font-mono font-semibold text-slate-800">{{ h.hora|time:"H:i" }}</td>
+            <td class="text-slate-700">{{ h.descricao|default:"—" }}</td>
+            <td>{% if h.ativo %}<span class="inline-flex rounded-full bg-emerald-50 ring-1 ring-emerald-200 px-2 py-0.5 text-xs text-emerald-700">Ativo</span>{% else %}<span class="inline-flex rounded-full bg-slate-50 ring-1 ring-slate-200 px-2 py-0.5 text-xs text-slate-700">Inativo</span>{% endif %}</td>
+            <td class="text-right">
+              <a href="?editar={{ h.pk }}" class="btn-secondary !py-1 !px-2 text-xs">{% icon "lucide:pencil" "0.9em" %}</a>
+              <form method="post" action="{% url 'transporte:horario_delete' h.pk %}" class="inline" onsubmit="return confirm('Excluir horário?');">{% csrf_token %}<button type="submit" class="btn-danger !py-1 !px-2 text-xs">{% icon "lucide:trash-2" "0.9em" %}</button></form>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="text-center text-slate-400 py-10">Nenhum horário cadastrado.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div x-show="open" x-cloak @keydown.escape.window="open = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" x-transition.opacity>
+    <div @click.outside="open = false" x-transition class="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <form method="post" action="{% if editing %}{% url 'transporte:horario_save' editing.pk %}{% else %}{% url 'transporte:horario_create' %}{% endif %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        <div class="flex items-center justify-between"><h2 class="text-lg font-semibold text-slate-800">{% if editing %}Editar horário{% else %}Novo horário{% endif %}</h2><button type="button" @click="open = false" class="text-slate-400 hover:text-slate-700">{% icon "lucide:x" "1.2em" %}</button></div>
+        <div><label class="label">Hora *</label>{{ form.hora }}{% for e in form.hora.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+        <div><label class="label">Descrição</label>{{ form.descricao }}</div>
+        <div><label class="label">Ordem (menor = aparece primeiro)</label>{{ form.ordem }}</div>
+        <label class="inline-flex items-center gap-2 text-sm">{{ form.ativo }} Ativo</label>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100"><button type="button" @click="open = false" class="btn-secondary">Cancelar</button><button type="submit" class="btn-primary">{% icon "lucide:check" "1em" %} Salvar</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
