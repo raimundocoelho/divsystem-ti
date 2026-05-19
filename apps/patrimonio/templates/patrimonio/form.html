@@ -1,0 +1,104 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if editing %}Editar{% else %}Novo{% endif %} Patrimônio{% endblock %}
+{% block page_title %}{% if editing %}Editar Patrimônio{% else %}Novo Patrimônio{% endif %}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800">{% if editing %}Editar Patrimônio{% else %}Novo Patrimônio{% endif %}</h1>
+    {% if editing %}<p class="text-sm text-slate-500 mt-1 font-mono">{{ editing.numero_patrimonio }}</p>{% endif %}
+  </div>
+
+  <form method="post" class="card p-6 space-y-6">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="lg:col-span-2">
+        <label class="label">Descrição *</label>
+        {{ form.descricao }}
+        {% for e in form.descricao.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Categoria *</label>
+        {{ form.categoria }}
+        {% for e in form.categoria.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Local</label>
+        {{ form.local }}
+        {% for e in form.local.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Marca</label>
+        {{ form.marca }}
+        {% for e in form.marca.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Modelo</label>
+        {{ form.modelo }}
+        {% for e in form.modelo.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Número de Série</label>
+        {{ form.numero_serie }}
+        {% for e in form.numero_serie.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Cor</label>
+        {{ form.cor }}
+        {% for e in form.cor.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Valor de Aquisição (R$) *</label>
+        {{ form.valor_aquisicao }}
+        {% for e in form.valor_aquisicao.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Data de Aquisição</label>
+        {{ form.data_aquisicao }}
+        {% for e in form.data_aquisicao.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Nota Fiscal</label>
+        {{ form.nota_fiscal_numero }}
+        {% for e in form.nota_fiscal_numero.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Estado de Conservação *</label>
+        {{ form.estado_conservacao }}
+        {% for e in form.estado_conservacao.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      {% if editing %}
+      <div>
+        <label class="label">Situação</label>
+        {{ form.situacao }}
+        {% for e in form.situacao.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="border-t border-slate-100 pt-4">
+      <label class="label">Observações</label>
+      {{ form.observacoes }}
+      {% for e in form.observacoes.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+    </div>
+
+    {% if editing %}
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+      <strong>Fotos:</strong> upload de fotos disponível temporariamente pelo
+      <a href="/admin/django/patrimonio/patrimoniofoto/" class="text-indigo-600 hover:underline">admin nativo</a>
+      enquanto a tela de upload (dropzone R2) é finalizada.
+    </div>
+    {% endif %}
+
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <a href="{% if editing %}{% url 'patrimonio:detail' editing.pk %}{% else %}{% url 'patrimonio:list' %}{% endif %}" class="btn-secondary">Cancelar</a>
+      <button type="submit" class="btn-primary inline-flex items-center gap-2">
+        {% icon "lucide:check" "1em" %} {% if editing %}Atualizar{% else %}Cadastrar{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

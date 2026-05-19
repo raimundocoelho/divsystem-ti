@@ -1,0 +1,116 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Locais Patrimoniais{% endblock %}
+{% block page_title %}Locais Patrimoniais{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ open: {% if show_modal %}true{% else %}false{% endif %} }">
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Locais</h1>
+      <p class="mt-1 text-sm text-slate-500">Onde os bens estão fisicamente alocados (prédio → andar → sala).</p>
+    </div>
+    <a href="?novo=1" @click.prevent="open = true" class="btn-primary inline-flex items-center gap-2">
+      {% icon "lucide:plus" "1em" %} Novo Local
+    </a>
+  </div>
+
+  <div class="card">
+    <header class="card-header">
+      <form method="get" class="flex flex-1">
+        <input class="input max-w-xs" type="search" name="q" placeholder="Buscar por nome ou endereço..." value="{{ search }}">
+      </form>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Tipo</th>
+            <th>Dentro de</th>
+            <th>Secretaria / Setor</th>
+            <th>Endereço</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in locais %}
+          <tr class="bg-white">
+            <td class="font-medium text-slate-800">{{ l.nome }}</td>
+            <td class="text-slate-600">{{ l.get_tipo_display }}</td>
+            <td class="text-slate-600">{{ l.parent.nome|default:"—" }}</td>
+            <td class="text-slate-600 text-sm">
+              {{ l.secretaria.nome|default:"—" }}
+              {% if l.setor %}<br><span class="text-xs text-slate-500">{{ l.setor.nome }}</span>{% endif %}
+            </td>
+            <td class="text-slate-600 text-sm">{{ l.endereco|default:"—" }}</td>
+            <td class="text-right">
+              <a href="?editar={{ l.pk }}" class="btn-secondary !py-1 !px-2 text-xs inline-flex items-center gap-1">
+                {% icon "lucide:pencil" "0.9em" %}
+              </a>
+              <form method="post" action="{% url 'patrimonio:local_delete' l.pk %}" class="inline" onsubmit="return confirm('Excluir local {{ l.nome|escapejs }}?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-danger !py-1 !px-2 text-xs inline-flex items-center gap-1">
+                  {% icon "lucide:trash-2" "0.9em" %}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-slate-400 py-10">Nenhum local cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Modal #}
+  <div x-show="open" x-cloak @keydown.escape.window="open = false"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" x-transition.opacity>
+    <div @click.outside="open = false" x-transition class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <form method="post" action="{% if editing %}{% url 'patrimonio:local_save' editing.pk %}{% else %}{% url 'patrimonio:local_create' %}{% endif %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-800">{% if editing %}Editar Local{% else %}Novo Local{% endif %}</h2>
+          <button type="button" @click="open = false" class="text-slate-400 hover:text-slate-700">{% icon "lucide:x" "1.2em" %}</button>
+        </div>
+        {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label class="label">Nome *</label>
+            {{ form.nome }}
+            {% for e in form.nome.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label">Tipo *</label>
+            {{ form.tipo }}
+          </div>
+          <div>
+            <label class="label">Dentro de</label>
+            {{ form.parent }}
+          </div>
+          <div>
+            <label class="label">Secretaria</label>
+            {{ form.secretaria }}
+          </div>
+          <div>
+            <label class="label">Setor</label>
+            {{ form.setor }}
+          </div>
+          <div class="sm:col-span-2">
+            <label class="label">Endereço</label>
+            {{ form.endereco }}
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" @click="open = false" class="btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-primary">{% icon "lucide:check" "1em" %} {% if editing %}Salvar{% else %}Cadastrar{% endif %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

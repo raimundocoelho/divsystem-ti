@@ -1,0 +1,128 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Categorias MCASP{% endblock %}
+{% block page_title %}Categorias MCASP{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ open: {% if show_modal %}true{% else %}false{% endif %} }">
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Categorias MCASP</h1>
+      <p class="mt-1 text-sm text-slate-500">Classificação contábil dos bens patrimoniais.</p>
+    </div>
+    <a href="?novo=1" @click.prevent="open = true" class="btn-primary inline-flex items-center gap-2">
+      {% icon "lucide:plus" "1em" %} Nova Categoria
+    </a>
+  </div>
+
+  <div class="card">
+    <header class="card-header">
+      <form method="get" class="flex flex-1">
+        <input class="input max-w-xs" type="search" name="q" placeholder="Buscar por nome ou código..." value="{{ search }}">
+      </form>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Código MCASP</th>
+            <th>Vida útil</th>
+            <th>Método</th>
+            <th>Status</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in categorias %}
+          <tr class="bg-white">
+            <td class="font-medium text-slate-800">{{ c.nome }}</td>
+            <td class="font-mono text-xs text-slate-500">{{ c.codigo_mcasp|default:"—" }}</td>
+            <td class="text-slate-600">{{ c.vida_util_anos|default:"—" }}{% if c.vida_util_anos %} anos{% endif %}</td>
+            <td class="text-slate-600">{{ c.get_metodo_depreciacao_display }}</td>
+            <td>
+              {% if c.ativo %}<span class="inline-flex rounded-full bg-emerald-50 ring-1 ring-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">Ativa</span>
+              {% else %}<span class="inline-flex rounded-full bg-slate-50 ring-1 ring-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">Inativa</span>{% endif %}
+              {% if not c.tenant_id %}<span class="ml-1 inline-flex rounded-full bg-indigo-50 ring-1 ring-indigo-200 px-2 py-0.5 text-xs font-medium text-indigo-700">Global</span>{% endif %}
+            </td>
+            <td class="text-right">
+              <a href="?editar={{ c.pk }}" class="btn-secondary !py-1 !px-2 text-xs inline-flex items-center gap-1">
+                {% icon "lucide:pencil" "0.9em" %}
+              </a>
+              {% if c.tenant_id %}
+              <form method="post" action="{% url 'patrimonio:categoria_delete' c.pk %}" class="inline" onsubmit="return confirm('Excluir categoria {{ c.nome|escapejs }}?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-danger !py-1 !px-2 text-xs inline-flex items-center gap-1">
+                  {% icon "lucide:trash-2" "0.9em" %}
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-slate-400 py-10">Nenhuma categoria cadastrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Modal #}
+  <div x-show="open" x-cloak @keydown.escape.window="open = false"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" x-transition.opacity>
+    <div @click.outside="open = false" x-transition class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <form method="post" action="{% if editing %}{% url 'patrimonio:categoria_save' editing.pk %}{% else %}{% url 'patrimonio:categoria_create' %}{% endif %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-800">{% if editing %}Editar Categoria{% else %}Nova Categoria{% endif %}</h2>
+          <button type="button" @click="open = false" class="text-slate-400 hover:text-slate-700">{% icon "lucide:x" "1.2em" %}</button>
+        </div>
+        {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label class="label">Nome *</label>
+            {{ form.nome }}
+            {% for e in form.nome.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label">Código MCASP</label>
+            {{ form.codigo_mcasp }}
+            {% for e in form.codigo_mcasp.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label">Conta PCASP</label>
+            {{ form.nome_conta_pcasp }}
+          </div>
+          <div>
+            <label class="label">Vida útil (anos)</label>
+            {{ form.vida_util_anos }}
+          </div>
+          <div>
+            <label class="label">Taxa de depreciação anual (%)</label>
+            {{ form.taxa_depreciacao_anual }}
+          </div>
+          <div>
+            <label class="label">Valor residual (%)</label>
+            {{ form.valor_residual_pct }}
+          </div>
+          <div>
+            <label class="label">Método de depreciação</label>
+            {{ form.metodo_depreciacao }}
+          </div>
+          <div class="flex items-center gap-3 mt-6">
+            <label class="inline-flex items-center gap-2 text-sm">{{ form.deprecia }} Deprecia</label>
+            <label class="inline-flex items-center gap-2 text-sm">{{ form.ativo }} Ativa</label>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" @click="open = false" class="btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-primary">{% icon "lucide:check" "1em" %} {% if editing %}Salvar{% else %}Cadastrar{% endif %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

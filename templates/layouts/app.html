@@ -47,7 +47,7 @@
 
       {# ── Patrimônio ── #}
       <p class="sidebar-section">Patrimônio</p>
-      <a href="/admin/django/patrimonio/patrimonio/" class="nav-link {% active_url '/admin/patrimonio' %}{% active_url '/admin/django/patrimonio/patrimonio/' %}">
+      <a href="{% url 'patrimonio:list' %}" class="nav-link {% active_url '/admin/patrimonio/' %}">
         {% icon "lucide:package" "1.1em" %}<span>Bens patrimoniais</span>
       </a>
       <a href="/admin/django/patrimonio/patrimoniocadastroia/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniocadastroia/' %}">
@@ -56,10 +56,10 @@
       <a href="/admin/django/patrimonio/patrimonioqrcode/" class="nav-link {% active_url '/admin/django/patrimonio/patrimonioqrcode/' %}">
         {% icon "lucide:qr-code" "1.1em" %}<span>Etiquetas</span>
       </a>
-      <a href="/admin/django/patrimonio/patrimoniocategoria/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniocategoria/' %}">
+      <a href="{% url 'patrimonio:categoria_list' %}" class="nav-link {% active_url '/admin/patrimonio/categorias' %}">
         {% icon "lucide:tag" "1.1em" %}<span>Categorias MCASP</span>
       </a>
-      <a href="/admin/django/patrimonio/patrimoniolocal/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniolocal/' %}">
+      <a href="{% url 'patrimonio:local_list' %}" class="nav-link {% active_url '/admin/patrimonio/locais' %}">
         {% icon "lucide:map-pin" "1.1em" %}<span>Locais</span>
       </a>
       <a href="/admin/django/patrimonio/patrimoniodepreciacao/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniodepreciacao/' %}">

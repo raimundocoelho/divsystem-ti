@@ -1,0 +1,117 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{{ p.numero_patrimonio }}{% endblock %}
+{% block page_title %}{{ p.numero_patrimonio }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="font-mono text-xs text-slate-400">{{ p.numero_patrimonio }}</p>
+      <h1 class="text-2xl font-semibold text-slate-800">{{ p.descricao }}</h1>
+      <div class="mt-2 flex items-center gap-2 text-sm">
+        {% with situacao=p.situacao %}
+        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1
+          {% if situacao == 'ativo' %}bg-emerald-50 ring-emerald-200 text-emerald-700
+          {% elif situacao == 'em_manutencao' %}bg-amber-50 ring-amber-200 text-amber-700
+          {% elif situacao == 'emprestado' %}bg-blue-50 ring-blue-200 text-blue-700
+          {% elif situacao == 'transferido' %}bg-indigo-50 ring-indigo-200 text-indigo-700
+          {% elif situacao == 'baixado' %}bg-red-50 ring-red-200 text-red-700
+          {% else %}bg-slate-50 ring-slate-200 text-slate-700{% endif %}">
+          {{ p.get_situacao_display }}
+        </span>
+        {% endwith %}
+        <span class="text-slate-400">·</span>
+        <span class="text-slate-600">{{ p.get_estado_conservacao_display }}</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'patrimonio:list' %}" class="btn-secondary inline-flex items-center gap-1">
+        {% icon "lucide:arrow-left" "1em" %} Voltar
+      </a>
+      <a href="{% url 'patrimonio:edit' p.pk %}" class="btn-primary inline-flex items-center gap-1">
+        {% icon "lucide:pencil" "1em" %} Editar
+      </a>
+      <form method="post" action="{% url 'patrimonio:delete' p.pk %}" onsubmit="return confirm('Confirma exclusão deste patrimônio?');" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="btn-danger inline-flex items-center gap-1">
+          {% icon "lucide:trash-2" "1em" %} Excluir
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    {# Dados gerais #}
+    <div class="card p-6 lg:col-span-2 space-y-4">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">Dados</h2>
+      <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
+        <div><dt class="text-slate-500">Categoria</dt><dd class="text-slate-800 font-medium">{{ p.categoria.nome|default:"—" }}{% if p.categoria.codigo_mcasp %} <span class="text-slate-400 font-mono">({{ p.categoria.codigo_mcasp }})</span>{% endif %}</dd></div>
+        <div><dt class="text-slate-500">Local</dt><dd class="text-slate-800">{{ p.local.nome|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Marca</dt><dd class="text-slate-800">{{ p.marca|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Modelo</dt><dd class="text-slate-800">{{ p.modelo|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Número de Série</dt><dd class="text-slate-800 font-mono">{{ p.numero_serie|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Cor</dt><dd class="text-slate-800">{{ p.cor|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Secretaria</dt><dd class="text-slate-800">{{ p.secretaria.nome|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Setor</dt><dd class="text-slate-800">{{ p.setor.nome|default:"—" }}</dd></div>
+      </dl>
+
+      {% if p.observacoes %}
+      <div class="pt-3 border-t border-slate-100">
+        <dt class="text-slate-500 text-sm">Observações</dt>
+        <dd class="text-slate-700 text-sm whitespace-pre-line mt-1">{{ p.observacoes }}</dd>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Valores #}
+    <div class="card p-6 space-y-4">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">Valores</h2>
+      <div>
+        <p class="text-xs text-slate-500">Valor de aquisição</p>
+        <p class="text-2xl font-semibold text-slate-800 tabular-nums">R$ {{ p.valor_aquisicao|floatformat:"2g" }}</p>
+      </div>
+      <div class="grid gap-3 text-sm">
+        <div><dt class="text-slate-500">Data aquisição</dt><dd class="text-slate-800">{{ p.data_aquisicao|date:"d/m/Y"|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Início depreciação</dt><dd class="text-slate-800">{{ p.data_inicio_depreciacao|date:"d/m/Y"|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Nota fiscal</dt><dd class="text-slate-800 font-mono">{{ p.nota_fiscal_numero|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Depreciação acumulada</dt><dd class="text-slate-800 tabular-nums">R$ {{ p.valor_depreciado_acumulado|floatformat:"2g" }}</dd></div>
+        <div><dt class="text-slate-500">Valor líquido contábil</dt><dd class="text-slate-800 tabular-nums">R$ {{ p.valor_liquido_contabil|floatformat:"2g"|default:"—" }}</dd></div>
+      </div>
+    </div>
+  </div>
+
+  {# Fotos #}
+  {% if fotos %}
+  <div class="card p-6">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4">Fotos</h2>
+    <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      {% for f in fotos %}
+      <div class="relative">
+        <img src="{{ f.url }}" alt="" class="aspect-square w-full rounded-lg object-cover ring-1 ring-slate-200">
+        {% if f.principal %}
+        <span class="absolute top-1.5 left-1.5 inline-flex rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-semibold text-white">Capa</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if p.qrcode %}
+  <div class="card p-6 flex items-center gap-4">
+    <div class="rounded-lg bg-slate-100 p-3">
+      {% icon "lucide:qr-code" "2em" %}
+    </div>
+    <div>
+      <p class="text-sm text-slate-500">QR Code</p>
+      <p class="font-mono text-lg text-slate-800">{{ p.qrcode.codigo }}</p>
+      <p class="text-xs text-slate-400 mt-1">
+        Status: {{ p.qrcode.get_status_display }} ·
+        Impressões: {{ p.qrcode.qtd_impressoes }}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Patrimônios{% endblock %}
+{% block page_title %}Patrimônios{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Patrimônios</h1>
+      <p class="mt-1 text-sm text-slate-500">Gestão de bens patrimoniais do município.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/admin/django/patrimonio/patrimonioqrcode/" class="btn-secondary inline-flex items-center gap-2">
+        {% icon "lucide:printer" "1em" %} Imprimir etiquetas
+      </a>
+      <a href="/admin/django/patrimonio/patrimoniocadastroia/" class="btn-secondary inline-flex items-center gap-2">
+        {% icon "lucide:zap" "1em" %} Cadastro rápido
+      </a>
+      <a href="{% url 'patrimonio:create' %}" class="btn-primary inline-flex items-center gap-2">
+        {% icon "lucide:plus" "1em" %} Novo Patrimônio
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="px-5 py-4 border-b border-slate-100">
+      <form method="get" class="grid gap-3 sm:grid-cols-[1fr_180px_180px_180px_auto] items-end">
+        <div>
+          <label class="label">Buscar</label>
+          <input class="input" type="search" name="q" placeholder="Número, descrição, marca, modelo..." value="{{ filtros.search }}">
+        </div>
+        <div>
+          <label class="label">Situação</label>
+          <select class="input" name="situacao">
+            <option value="">Todas</option>
+            {% for value, label in situacoes %}
+              <option value="{{ value }}" {% if filtros.situacao == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label">Categoria</label>
+          <select class="input" name="categoria">
+            <option value="">Todas</option>
+            {% for c in categorias %}
+              <option value="{{ c.pk }}" {% if filtros.categoria == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label">Local</label>
+          <select class="input" name="local">
+            <option value="">Todos</option>
+            {% for l in locais %}
+              <option value="{{ l.pk }}" {% if filtros.local == l.pk|stringformat:"s" %}selected{% endif %}>{{ l.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="btn-primary">Filtrar</button>
+          {% if tem_filtro %}<a href="{% url 'patrimonio:list' %}" class="btn-secondary">Limpar</a>{% endif %}
+        </div>
+      </form>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Descrição</th>
+            <th>Categoria</th>
+            <th>Local</th>
+            <th>Situação</th>
+            <th class="text-right">Valor</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in patrimonios %}
+          <tr class="bg-white">
+            <td class="font-mono text-xs">{{ p.numero_patrimonio }}</td>
+            <td class="font-medium text-slate-800">{{ p.descricao|truncatechars:50 }}</td>
+            <td>{{ p.categoria.nome|default:"—" }}</td>
+            <td>{{ p.local.nome|default:"—" }}</td>
+            <td>
+              {% with situacao=p.situacao %}
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1
+                {% if situacao == 'ativo' %}bg-emerald-50 ring-emerald-200 text-emerald-700
+                {% elif situacao == 'em_manutencao' %}bg-amber-50 ring-amber-200 text-amber-700
+                {% elif situacao == 'emprestado' %}bg-blue-50 ring-blue-200 text-blue-700
+                {% elif situacao == 'transferido' %}bg-indigo-50 ring-indigo-200 text-indigo-700
+                {% elif situacao == 'baixado' %}bg-red-50 ring-red-200 text-red-700
+                {% else %}bg-slate-50 ring-slate-200 text-slate-700{% endif %}">
+                {{ p.get_situacao_display }}
+              </span>
+              {% endwith %}
+            </td>
+            <td class="text-right font-mono text-slate-700">R$ {{ p.valor_aquisicao|floatformat:"2g" }}</td>
+            <td class="text-right">
+              <a href="{% url 'patrimonio:detail' p.pk %}" class="btn-secondary !py-1 !px-2 text-xs inline-flex items-center gap-1" title="Detalhes">
+                {% icon "lucide:eye" "0.9em" %}
+              </a>
+              <a href="{% url 'patrimonio:edit' p.pk %}" class="btn-secondary !py-1 !px-2 text-xs inline-flex items-center gap-1" title="Editar">
+                {% icon "lucide:pencil" "0.9em" %}
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center text-slate-400 py-10">
+            {% if tem_filtro %}Nenhum patrimônio encontrado com os filtros atuais.{% else %}Nenhum patrimônio cadastrado ainda.{% endif %}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm">
+      <span class="text-slate-500">Página {{ page.number }} de {{ page.paginator.num_pages }} · {{ page.paginator.count }} bens</span>
+      <div class="flex gap-1">
+        {% if page.has_previous %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.previous_page_number }}">Anterior</a>{% endif %}
+        {% if page.has_next %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.next_page_number }}">Próxima</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
