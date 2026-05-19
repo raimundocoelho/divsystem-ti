@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy
 
 on:
   push:
@@ -17,15 +17,15 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Run deploy script on EC2
+      - name: Run deploy on sabio-srv
         run: |
           ssh -i ~/.ssh/id_ed25519 \
               -o BatchMode=yes \
-              "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+              "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
               'sudo /usr/local/bin/deploy-divsystem.sh'
 
       - name: Healthcheck

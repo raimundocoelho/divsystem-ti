@@ -45,7 +45,65 @@
         {% icon "lucide:wifi" "1.1em" %}<span>Políticas Mikrotik</span>
       </a>
 
-      {# Patrimônio, Frota e Transporte: porte das telas em andamento, ocultos até saírem do Django admin. #}
+      {# ── Patrimônio ── #}
+      <p class="sidebar-section">Patrimônio</p>
+      <a href="/admin/django/patrimonio/patrimonio/" class="nav-link {% active_url '/admin/patrimonio' %}{% active_url '/admin/django/patrimonio/patrimonio/' %}">
+        {% icon "lucide:package" "1.1em" %}<span>Bens patrimoniais</span>
+      </a>
+      <a href="/admin/django/patrimonio/patrimoniocadastroia/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniocadastroia/' %}">
+        {% icon "lucide:camera" "1.1em" %}<span>Cadastro por câmera</span>
+      </a>
+      <a href="/admin/django/patrimonio/patrimonioqrcode/" class="nav-link {% active_url '/admin/django/patrimonio/patrimonioqrcode/' %}">
+        {% icon "lucide:qr-code" "1.1em" %}<span>Etiquetas</span>
+      </a>
+      <a href="/admin/django/patrimonio/patrimoniocategoria/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniocategoria/' %}">
+        {% icon "lucide:tag" "1.1em" %}<span>Categorias MCASP</span>
+      </a>
+      <a href="/admin/django/patrimonio/patrimoniolocal/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniolocal/' %}">
+        {% icon "lucide:map-pin" "1.1em" %}<span>Locais</span>
+      </a>
+      <a href="/admin/django/patrimonio/patrimoniodepreciacao/" class="nav-link {% active_url '/admin/django/patrimonio/patrimoniodepreciacao/' %}">
+        {% icon "lucide:file-text" "1.1em" %}<span>Relatórios contábeis</span>
+      </a>
+
+      {# ── Frota ── #}
+      <p class="sidebar-section">Frota</p>
+      <a href="/admin/django/frota/veiculo/" class="nav-link {% active_url '/admin/django/frota/veiculo/' %}">
+        {% icon "lucide:car" "1.1em" %}<span>Veículos</span>
+      </a>
+      <a href="/admin/django/frota/diariobordo/" class="nav-link {% active_url '/admin/django/frota/diariobordo/' %}">
+        {% icon "lucide:book-open" "1.1em" %}<span>Diário de Bordo</span>
+      </a>
+      <a href="/admin/django/frota/registrohoras/" class="nav-link {% active_url '/admin/django/frota/registrohoras/' %}">
+        {% icon "lucide:clock" "1.1em" %}<span>Registros de horas</span>
+      </a>
+
+      {# ── Transporte ── #}
+      <p class="sidebar-section">Transporte</p>
+      <a href="/admin/django/transporte/viagemtransporte/" class="nav-link {% active_url '/admin/django/transporte/viagemtransporte/' %}">
+        {% icon "lucide:bus" "1.1em" %}<span>Viagens SIM Saúde</span>
+      </a>
+      <a href="/admin/django/transporte/protocoloexame/" class="nav-link {% active_url '/admin/django/transporte/protocoloexame/' %}">
+        {% icon "lucide:clipboard-list" "1.1em" %}<span>Protocolos de Exame</span>
+      </a>
+      <a href="/admin/django/transporte/paciente/" class="nav-link {% active_url '/admin/django/transporte/paciente/' %}">
+        {% icon "lucide:user" "1.1em" %}<span>Pacientes</span>
+      </a>
+      <a href="/admin/django/transporte/motorista/" class="nav-link {% active_url '/admin/django/transporte/motorista/' %}">
+        {% icon "lucide:steering-wheel" "1.1em" %}<span>Motoristas</span>
+      </a>
+      <a href="/admin/django/transporte/cidadedestino/" class="nav-link {% active_url '/admin/django/transporte/cidadedestino/' %}">
+        {% icon "lucide:map" "1.1em" %}<span>Cidades-destino</span>
+      </a>
+      <a href="/admin/django/transporte/localatendimento/" class="nav-link {% active_url '/admin/django/transporte/localatendimento/' %}">
+        {% icon "lucide:hospital" "1.1em" %}<span>Locais de atendimento</span>
+      </a>
+      <a href="/admin/django/transporte/localembarque/" class="nav-link {% active_url '/admin/django/transporte/localembarque/' %}">
+        {% icon "lucide:bus-front" "1.1em" %}<span>Locais de embarque</span>
+      </a>
+      <a href="/admin/django/transporte/horariotransporte/" class="nav-link {% active_url '/admin/django/transporte/horariotransporte/' %}">
+        {% icon "lucide:clock-3" "1.1em" %}<span>Horários sugeridos</span>
+      </a>
       {% endif %}
 
       {# ── Administração ── #}
