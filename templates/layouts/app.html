@@ -19,23 +19,33 @@
         {% icon "lucide:layout-dashboard" "1.1em" %}<span>Dashboard</span>
       </a>
 
-      {# ── Módulos ── #}
+      {# ── Agentes ── #}
       {% if user|has_role:"gestor" %}
-      <p class="sidebar-section">Módulos</p>
+      <p class="sidebar-section">Agentes</p>
       <a href="{% url 'agentes:list' %}" class="nav-link {% active_url '/admin/agentes' %}">
         {% icon "lucide:cpu" "1.1em" %}<span>Agentes</span>
       </a>
-      <a href="{% url 'mikrotik:list' %}" class="nav-link {% active_url '/admin/mikrotik' %}">
-        {% icon "lucide:router" "1.1em" %}<span>Mikrotik</span>
+
+      {# ── Mikrotik ── #}
+      <p class="sidebar-section">Mikrotik</p>
+      <a href="{% url 'mikrotik:list' %}"
+         class="nav-link {% if '/admin/mikrotik' in request.path and '/politicas' not in request.path and '/sites-bloqueados' not in request.path %}is-active{% endif %}">
+        {% icon "lucide:router" "1.1em" %}<span>Equipamentos</span>
       </a>
 
+      {# ── Monitoramento (via agente Windows) ── #}
       <p class="sidebar-section">Monitoramento</p>
-      <a href="{% url 'mikrotik:tenant_politica_list' %}" class="nav-link {% active_url '/admin/mikrotik/politicas' %}">
-        {% icon "lucide:shield" "1.1em" %}<span>Políticas de Sites</span>
+      <a href="{% url 'agentes:politica_list' %}" class="nav-link {% active_url '/admin/agentes/politicas' %}">
+        {% icon "lucide:shield-check" "1.1em" %}<span>Políticas de Sites</span>
       </a>
-      <a href="{% url 'mikrotik:tenant_sites_bloqueados' %}" class="nav-link {% active_url '/admin/mikrotik/sites-bloqueados' %}">
-        {% icon "lucide:shield-off" "1.1em" %}<span>Sites Bloqueados</span>
+      <a href="{% url 'agentes:sites_bloqueados' %}" class="nav-link {% active_url '/admin/agentes/sites-bloqueados' %}">
+        {% icon "lucide:shield-alert" "1.1em" %}<span>Sites Bloqueados</span>
       </a>
+      <a href="{% url 'mikrotik:tenant_politica_list' %}" class="nav-link {% active_url '/admin/mikrotik/politicas' %}{% active_url '/admin/mikrotik/sites-bloqueados' %}">
+        {% icon "lucide:wifi" "1.1em" %}<span>Políticas Mikrotik</span>
+      </a>
+
+      {# Patrimônio, Frota e Transporte: porte das telas em andamento, ocultos até saírem do Django admin. #}
       {% endif %}
 
       {# ── Administração ── #}
