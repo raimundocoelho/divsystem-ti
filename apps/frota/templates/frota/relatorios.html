@@ -1,0 +1,58 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Relatórios de Frota{% endblock %}
+{% block page_title %}Relatórios de Frota{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800">Relatórios de Frota</h1>
+    <p class="mt-1 text-sm text-slate-500">Prestação de contas de KM rodados por período, veículo ou secretaria.</p>
+  </div>
+
+  <form method="post" class="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label">Data inicial</label>
+        {{ form.data_inicio }}
+        {% for e in form.data_inicio.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Data final</label>
+        {{ form.data_fim }}
+        {% for e in form.data_fim.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+    </div>
+
+    <div>
+      <label class="label">Secretaria</label>
+      {{ form.secretaria }}
+      {% for e in form.secretaria.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      <label class="label">Veículo</label>
+      {{ form.veiculo }}
+      {% for e in form.veiculo.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="flex justify-end pt-2">
+      <button type="submit" class="btn-primary">
+        {% icon "lucide:download" "1em" %} Gerar Relatório
+      </button>
+    </div>
+  </form>
+
+  <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+    <p class="mb-1 font-semibold text-slate-700">Sobre o relatório</p>
+    <ul class="list-disc space-y-1 pl-5">
+      <li>O documento traz todas as viagens do período selecionado, com condutor, autorizador, destino, finalidade e KM.</li>
+      <li>O total consolidado no rodapé considera apenas viagens <strong>concluídas</strong> (com KM de retorno preenchido).</li>
+      <li>Viagens em andamento aparecem listadas, mas não somam no total.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

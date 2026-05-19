@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatório de KM da Frota</title>
+<style>
+  @page { size: A4 landscape; margin: 18mm 12mm 14mm 12mm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #1f2937; }
+  h1 { font-size: 16px; margin: 0 0 4px 0; }
+  .meta { font-size: 10px; color: #6b7280; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #374151; }
+  tr.total td { font-weight: bold; background: #f9fafb; border-top: 2px solid #111827; }
+  .right { text-align: right; }
+  .mono { font-family: "DejaVu Sans Mono", monospace; }
+  .small { font-size: 9px; color: #6b7280; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 999px; font-size: 8px; font-weight: 600; }
+  .badge-ok { background: #d1fae5; color: #065f46; }
+  .badge-pend { background: #fef3c7; color: #92400e; }
+</style>
+</head>
+<body>
+  <h1>Relatório de KM da Frota</h1>
+  <div class="meta">
+    Período:
+    {% if data_inicio %}{{ data_inicio|date:"d/m/Y" }}{% else %}—{% endif %}
+    até
+    {% if data_fim %}{{ data_fim|date:"d/m/Y" }}{% else %}—{% endif %}
+    {% if secretaria %} · Secretaria: <strong>{{ secretaria.nome }}</strong>{% endif %}
+    {% if veiculo %} · Veículo: <strong>{{ veiculo.placa }} — {{ veiculo.modelo }}</strong>{% endif %}
+    · Emitido em {{ gerado_em|date:"d/m/Y H:i" }}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Saída</th>
+        <th>Retorno</th>
+        <th>Veículo</th>
+        <th>Condutor</th>
+        <th>Autorizador</th>
+        <th>Destino / Finalidade</th>
+        <th class="right">KM saída</th>
+        <th class="right">KM retorno</th>
+        <th class="right">KM</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in diarios %}
+      <tr>
+        <td class="mono">{{ d.saida_em|date:"d/m/Y H:i" }}</td>
+        <td class="mono">{{ d.retorno_em|date:"d/m/Y H:i"|default:"—" }}</td>
+        <td>
+          <strong>{{ d.veiculo.placa }}</strong>
+          <div class="small">{{ d.veiculo.modelo }}{% if d.veiculo.secretaria %} · {{ d.veiculo.secretaria.nome }}{% endif %}</div>
+        </td>
+        <td>{{ d.condutor.name|default:"—" }}</td>
+        <td>{{ d.autorizador.name|default:"—" }}</td>
+        <td>
+          {{ d.destino }}
+          <div class="small">{{ d.finalidade }}</div>
+        </td>
+        <td class="right mono">{{ d.km_saida|default:"—" }}</td>
+        <td class="right mono">{{ d.km_retorno|default:"—" }}</td>
+        <td class="right mono">{{ d.km_rodados|default:"—" }}</td>
+        <td>
+          {% if d.retorno_em %}
+            <span class="badge badge-ok">Concluída</span>
+          {% else %}
+            <span class="badge badge-pend">Em andamento</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="10" style="text-align:center; padding: 20px; color: #6b7280;">Nenhuma viagem no período.</td></tr>
+      {% endfor %}
+      {% if total_km %}
+      <tr class="total">
+        <td colspan="8" class="right">Total de KM rodados (viagens concluídas):</td>
+        <td class="right mono">{{ total_km }}</td>
+        <td></td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</body>
+</html>

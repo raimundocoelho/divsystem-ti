@@ -1,0 +1,131 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Diários de Bordo{% endblock %}
+{% block page_title %}Diários de Bordo{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Diários de Bordo</h1>
+      <p class="mt-1 text-sm text-slate-500">Histórico de viagens da frota municipal.</p>
+    </div>
+    <a href="{% url 'frota:diario_create' %}" class="btn-primary">
+      {% icon "lucide:plus" "1.1em" %}<span>Nova Viagem</span>
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="px-5 py-4 border-b border-slate-100 space-y-3">
+      <form method="get" class="space-y-3">
+        <div class="grid gap-3 sm:grid-cols-[1fr_220px]">
+          <input class="input" type="search" name="q" placeholder="Buscar placa, veículo ou condutor..." value="{{ filtros.search }}">
+          <select class="input" name="status">
+            <option value="" {% if not filtros.status %}selected{% endif %}>Todos</option>
+            <option value="andamento" {% if filtros.status == "andamento" %}selected{% endif %}>Em andamento</option>
+            <option value="concluida" {% if filtros.status == "concluida" %}selected{% endif %}>Concluídas</option>
+          </select>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] items-end">
+          <div>
+            <label class="label">De</label>
+            <input class="input" type="date" name="data_inicio" value="{{ filtros.data_inicio }}">
+          </div>
+          <div>
+            <label class="label">Até</label>
+            <input class="input" type="date" name="data_fim" value="{{ filtros.data_fim }}">
+          </div>
+          <div>
+            <label class="label">Veículo</label>
+            <select class="input" name="veiculo">
+              <option value="">Todos os veículos</option>
+              {% for v in veiculos %}
+                <option value="{{ v.id }}" {% if filtros.veiculo == v.id|stringformat:"s" %}selected{% endif %}>
+                  {{ v.placa }} — {{ v.modelo }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <button type="submit" class="btn-primary">Filtrar</button>
+            {% if tem_filtro %}<a href="{% url 'frota:diario_list' %}" class="btn-secondary">Limpar</a>{% endif %}
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Saída</th>
+            <th>Veículo</th>
+            <th>Condutor</th>
+            <th>Destino</th>
+            <th>Status</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in diarios %}
+          <tr class="bg-white">
+            <td class="font-mono text-xs">{{ d.saida_em|date:"d/m/Y H:i"|default:"—" }}</td>
+            <td>
+              <div class="font-semibold text-slate-800">{{ d.veiculo.placa|default:"—" }}</div>
+              <div class="text-xs text-slate-400">{{ d.veiculo.modelo }}</div>
+            </td>
+            <td>{{ d.condutor.name|default:"—" }}</td>
+            <td>
+              <div class="flex items-center gap-2">
+                <span>{{ d.destino|truncatechars:40 }}</span>
+                {% if d.viagem_transporte_id %}
+                <span class="inline-flex items-center gap-1 rounded-full bg-sky-50 ring-1 ring-sky-200 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                  {% icon "lucide:bus" "0.85em" %} SIM
+                </span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              {% if d.retorno_em %}
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 ring-1 ring-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                Concluída · {{ d.retorno_em|date:"d/m H:i" }}
+              </span>
+              {% else %}
+              <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 ring-1 ring-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
+                Em andamento
+              </span>
+              {% endif %}
+            </td>
+            <td class="text-right">
+              {% if d.retorno_em %}
+                <a href="{% url 'frota:diario_edit' d.pk %}" class="btn-secondary !py-1 !px-2 text-xs inline-flex items-center gap-1">
+                  {% icon "lucide:pencil" "0.9em" %} Editar
+                </a>
+              {% else %}
+                <a href="{% url 'frota:diario_edit' d.pk %}" class="btn-primary !py-1 !px-2 text-xs inline-flex items-center gap-1">
+                  {% icon "lucide:check" "0.9em" %} Fechar
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-slate-400 py-10">
+            {% if tem_filtro %}Nenhuma viagem encontrada com os filtros atuais.{% else %}Nenhuma viagem registrada ainda.{% endif %}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm">
+      <span class="text-slate-500">Página {{ page.number }} de {{ page.paginator.num_pages }} · {{ page.paginator.count }} viagens</span>
+      <div class="flex gap-1">
+        {% if page.has_previous %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.previous_page_number }}">Anterior</a>{% endif %}
+        {% if page.has_next %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.next_page_number }}">Próxima</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}Veículos{% endblock %}
+{% block page_title %}Veículos{% endblock %}
+
+{% block content %}
+<div class="space-y-6"
+     x-data="{ open: {% if show_modal %}true{% else %}false{% endif %}, tab: '{% if form.renavam.errors or form.chassi.errors %}documentacao{% else %}basico{% endif %}' }">
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Veículos</h1>
+      <p class="mt-1 text-sm text-slate-500">Cadastro da frota municipal.</p>
+    </div>
+    <a href="?novo=1" @click.prevent="open = true" class="btn-primary">
+      {% icon "lucide:plus" "1.1em" %}<span>Novo Veículo</span>
+    </a>
+  </div>
+
+  <div class="card">
+    <header class="card-header">
+      <form method="get" class="flex flex-1">
+        <input class="input max-w-xs" type="search" name="q"
+               placeholder="Buscar por placa, nome ou modelo..." value="{{ search }}">
+      </form>
+    </header>
+
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Placa</th>
+            <th>Nome</th>
+            <th>Modelo</th>
+            <th>Secretaria</th>
+            <th class="text-right">Capacidade</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in veiculos %}
+          <tr class="bg-white">
+            <td class="font-mono font-semibold text-slate-800">{{ v.placa }}</td>
+            <td class="text-slate-700">{{ v.nome|default:"—" }}</td>
+            <td>{{ v.modelo }}</td>
+            <td>{{ v.secretaria.nome|default:"—" }}</td>
+            <td class="text-right tabular-nums text-slate-600">{{ v.capacidade_passageiros|default:"—" }}</td>
+            <td class="text-right">
+              <a href="?editar={{ v.pk }}" class="btn-secondary !py-1 !px-2 text-xs inline-flex items-center gap-1">
+                {% icon "lucide:pencil" "0.9em" %} Editar
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-slate-400 py-10">
+            {% if search %}Nenhum veículo encontrado com esse filtro.{% else %}Nenhum veículo cadastrado ainda.{% endif %}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm">
+      <span class="text-slate-500">Página {{ page.number }} de {{ page.paginator.num_pages }} · {{ page.paginator.count }} veículos</span>
+      <div class="flex gap-1">
+        {% if page.has_previous %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.previous_page_number }}{% if search %}&q={{ search }}{% endif %}">Anterior</a>{% endif %}
+        {% if page.has_next %}<a class="btn-secondary !py-1 !px-2 text-xs" href="?page={{ page.next_page_number }}{% if search %}&q={{ search }}{% endif %}">Próxima</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ───── Modal Novo/Editar ───── #}
+  <div x-show="open" x-cloak @keydown.escape.window="open = false"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+       x-transition.opacity>
+    <div @click.outside="open = false" x-transition
+         class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <form method="post" action="{% if editing %}{% url 'frota:veiculo_save' editing.pk %}{% else %}{% url 'frota:veiculo_create' %}{% endif %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-800">{% if editing %}Editar Veículo{% else %}Novo Veículo{% endif %}</h2>
+          <button type="button" @click="open = false" class="text-slate-400 hover:text-slate-700">
+            {% icon "lucide:x" "1.2em" %}
+          </button>
+        </div>
+
+        {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+        {# Tabs #}
+        <div class="flex gap-1 border-b border-slate-200">
+          <button type="button" @click="tab = 'basico'"
+                  :class="tab === 'basico' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                  class="relative px-4 py-2 text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer">
+            {% icon "lucide:car" "1em" %} Dados básicos
+            {% if form.secretaria.errors or form.placa.errors or form.modelo.errors or form.nome.errors or form.capacidade_passageiros.errors or form.observacoes.errors %}
+              <span class="inline-block h-2 w-2 rounded-full bg-red-500"></span>
+            {% endif %}
+          </button>
+          <button type="button" @click="tab = 'documentacao'"
+                  :class="tab === 'documentacao' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                  class="relative px-4 py-2 text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer">
+            {% icon "lucide:file-text" "1em" %} Documentação
+            {% if form.renavam.errors or form.chassi.errors %}<span class="inline-block h-2 w-2 rounded-full bg-red-500"></span>{% endif %}
+          </button>
+        </div>
+
+        {# Aba: Dados básicos #}
+        <div x-show="tab === 'basico'" x-cloak class="space-y-4">
+          <div>
+            <label class="label">Secretaria *</label>
+            {{ form.secretaria }}
+            {% for e in form.secretaria.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label">Nome / apelido</label>
+            {{ form.nome }}
+            {% for e in form.nome.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label">Placa *</label>
+              {{ form.placa }}
+              {% for e in form.placa.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+            </div>
+            <div>
+              <label class="label">Modelo *</label>
+              {{ form.modelo }}
+              {% for e in form.modelo.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+            </div>
+          </div>
+          <div>
+            <label class="label">Capacidade de passageiros</label>
+            {{ form.capacidade_passageiros }}
+            {% for e in form.capacidade_passageiros.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label">Observações</label>
+            {{ form.observacoes }}
+            {% for e in form.observacoes.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+
+        {# Aba: Documentação #}
+        <div x-show="tab === 'documentacao'" x-cloak class="space-y-4">
+          <div>
+            <label class="label">RENAVAM</label>
+            {{ form.renavam }}
+            <p class="text-xs text-slate-400 mt-1">11 dígitos. Único por organização.</p>
+            {% for e in form.renavam.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label">Chassi</label>
+            {{ form.chassi }}
+            <p class="text-xs text-slate-400 mt-1">17 caracteres (sem I, O, Q). Único por organização.</p>
+            {% for e in form.chassi.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" @click="open = false" class="btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-primary">
+            {% icon "lucide:check" "1em" %} {% if editing %}Salvar Alterações{% else %}Cadastrar Veículo{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

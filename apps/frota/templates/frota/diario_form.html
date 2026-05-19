@@ -1,0 +1,122 @@
+{% extends "layouts/app.html" %}
+{% load divsystem %}
+{% block title %}{% if diario %}Editar{% else %}Nova{% endif %} Viagem{% endblock %}
+{% block page_title %}{% if diario %}Editar Diário de Bordo{% else %}Novo Diário de Bordo{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800">{% if diario %}Editar Diário de Bordo{% else %}Novo Diário de Bordo{% endif %}</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      {% if diario %}Registre o retorno do veículo ou corrija dados da saída.
+      {% else %}Registre a saída/retorno do veículo. O KM de saída é sugerido com o último retorno.{% endif %}
+    </p>
+  </div>
+
+  {% if ja_fechada %}
+  <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2">
+    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Viagem concluída</span>
+    <span>Esta viagem já foi fechada. Alterações reabrem o ciclo de auditoria.</span>
+  </div>
+  {% endif %}
+
+  <form method="post" class="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="text-sm text-red-600">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div>
+      <label class="label">Veículo *</label>
+      {{ form.veiculo }}
+      {% for e in form.veiculo.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      <label class="label">Viagem SIM Saúde vinculada (opcional)</label>
+      {{ form.viagem_transporte }}
+      <p class="help">Ao vincular, o status da viagem muda automaticamente.</p>
+      {% for e in form.viagem_transporte.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label">Condutor *</label>
+        {{ form.condutor }}
+        {% for e in form.condutor.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Autorizador *</label>
+        {{ form.autorizador }}
+        {% for e in form.autorizador.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label">Saída em *</label>
+        {{ form.saida_em }}
+        {% for e in form.saida_em.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">Retorno em</label>
+        {{ form.retorno_em }}
+        <p class="help">Preencha para fechar a viagem.</p>
+        {% for e in form.retorno_em.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label">KM de saída *</label>
+        {{ form.km_saida }}
+        <p class="help">Preenchido automaticamente com o último retorno do veículo.</p>
+        {% for e in form.km_saida.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="label">KM de retorno</label>
+        {{ form.km_retorno }}
+        <p class="help">Deve ser maior ou igual ao KM de saída.</p>
+        {% for e in form.km_retorno.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+    </div>
+
+    <div>
+      <label class="label">Destino *</label>
+      {{ form.destino }}
+      {% for e in form.destino.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      <label class="label">Finalidade *</label>
+      {{ form.finalidade }}
+      {% for e in form.finalidade.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+      <a href="{% url 'frota:diario_list' %}" class="btn-secondary">Cancelar</a>
+      <button type="submit" class="btn-primary">
+        {% icon "lucide:check" "1em" %} {% if diario %}Salvar Alterações{% else %}Salvar Viagem{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const sel = document.getElementById('id_veiculo');
+  const km = document.getElementById('id_km_saida');
+  if (!sel || !km) return;
+  sel.addEventListener('change', async () => {
+    if (!sel.value) return;
+    const url = "{% url 'frota:diario_last_km' %}?veiculo=" + sel.value + "{% if diario %}&exclude={{ diario.pk }}{% endif %}";
+    try {
+      const r = await fetch(url);
+      const t = (await r.text()).trim();
+      if (t && (km.value === '' || km.value === '0' || km.dataset.autofill === '1')) {
+        km.value = t;
+        km.dataset.autofill = '1';
+      }
+    } catch (_) {}
+  });
+})();
+</script>
+{% endblock %}

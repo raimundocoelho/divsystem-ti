@@ -68,11 +68,14 @@
 
       {# ── Frota ── #}
       <p class="sidebar-section">Frota</p>
-      <a href="/admin/django/frota/veiculo/" class="nav-link {% active_url '/admin/django/frota/veiculo/' %}">
+      <a href="{% url 'frota:veiculo_list' %}" class="nav-link {% active_url '/admin/frota/veiculos' %}">
         {% icon "lucide:car" "1.1em" %}<span>Veículos</span>
       </a>
-      <a href="/admin/django/frota/diariobordo/" class="nav-link {% active_url '/admin/django/frota/diariobordo/' %}">
+      <a href="{% url 'frota:diario_list' %}" class="nav-link {% active_url '/admin/frota/diarios-bordo' %}">
         {% icon "lucide:book-open" "1.1em" %}<span>Diário de Bordo</span>
+      </a>
+      <a href="{% url 'frota:relatorios' %}" class="nav-link {% active_url '/admin/frota/relatorios' %}">
+        {% icon "lucide:file-bar-chart" "1.1em" %}<span>Relatórios</span>
       </a>
       <a href="/admin/django/frota/registrohoras/" class="nav-link {% active_url '/admin/django/frota/registrohoras/' %}">
         {% icon "lucide:clock" "1.1em" %}<span>Registros de horas</span>
